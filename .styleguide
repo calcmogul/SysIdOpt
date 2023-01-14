@@ -1,0 +1,19 @@
+cppHeaderFileInclude {
+  \.h$
+  \.hpp$
+  \.inc$
+}
+
+cppSrcFileInclude {
+  \.cpp$
+}
+
+includeOtherLibs {
+  ^Eigen/
+  ^fmt/
+  ^frc/
+  ^gtest/
+  ^sleipnir/
+  ^units/
+  ^wpi/
+}
