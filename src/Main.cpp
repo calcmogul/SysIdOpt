@@ -186,7 +186,7 @@ FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
 
   //          A         B       c
   //        [1  ?]     [0]     [0]
-  // xₖ₊₁ = [0  ?]xₖ + [?]uₖ + [?]
+  // xₖ₊₁ = [0  ?]xₖ + [?]uₖ + [?]sgn(xₖ)
   problem.SubjectTo(A(0, 0) == 1);
   problem.SubjectTo(A(1, 0) == 0);
   problem.SubjectTo(B(0, 0) == 0);
@@ -195,8 +195,8 @@ FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
   problem.Solve();
 
   //              A           B          c
-  //         [0       1]    [ 0  ]    [  0   ]
-  // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]
+  //         [0     1  ]    [ 0  ]    [  0   ]
+  // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]sgn(x)
   Eigen::Matrix<double, States, States> contA;
   Eigen::Matrix<double, States, Inputs> contB;
   Eigen::Matrix<double, States, Inputs> contC;
