@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 #include <frc/fmt/Eigen.h>
 #include <sleipnir/optimization/OptimizationProblem.hpp>
+#include <units/time.h>
 #include <unsupported/Eigen/MatrixFunctions>
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
@@ -21,6 +22,39 @@ double sign(double x) {
   } else {
     return 0.0;
   }
+}
+
+/**
+ * Undiscretizes the given continuous A and B matrices.
+ *
+ * @tparam States Number of states.
+ * @tparam Inputs Number of inputs.
+ * @param discA Discrete system matrix.
+ * @param discB Discrete input matrix.
+ * @param dt    Discretization timestep.
+ * @param contA Storage for continuous system matrix.
+ * @param contB Storage for continuous input matrix.
+ */
+template <int States, int Inputs>
+void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
+                    const Eigen::Matrix<double, States, Inputs>& discB,
+                    units::second_t dt,
+                    Eigen::Matrix<double, States, States>* contA,
+                    Eigen::Matrix<double, States, Inputs>* contB) {
+  // ϕ = [A_d  B_d]
+  //     [ 0    I ]
+  Eigen::Matrix<double, States + Inputs, States + Inputs> phi;
+  phi.template block<States, States>(0, 0) = discA;
+  phi.template block<States, Inputs>(0, States) = discB;
+  phi.template block<Inputs, States>(States, 0).setZero();
+  phi.template block<Inputs, Inputs>(States, States).setIdentity();
+
+  // M = log(ϕ/T) = [A  B]  // NOLINT
+  //                [0  0]
+  decltype(phi) M = phi.log() / dt.value();
+
+  *contA = M.template block<States, States>(0, 0);
+  *contB = M.template block<States, Inputs>(0, States);
 }
 
 struct FeedforwardGains {
@@ -122,6 +156,7 @@ FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
 
   auto A = problem.DecisionVariable(2, 2);
   auto B = problem.DecisionVariable(2, 1);
+  auto c = problem.DecisionVariable(2, 1);
 
   sleipnir::Variable J = 0.0;
   for (auto&& testName :
@@ -141,34 +176,30 @@ FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
       Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
       Eigen::Vector<double, Inputs> u{u_k};
 
-      J += (x_next - (A * x + B * u)).T() * (x_next - (A * x + B * u));
+      J += (x_next - (A * x + B * u + c * sign(v_k))).T() *
+           (x_next - (A * x + B * u + c * sign(v_k)));
     }
   }
   problem.Minimize(J);
 
   problem.Solve();
 
-  // Undiscretize system
-  //
-  //  [A  B]
-  //  [0  0]T   [A_d  B_d]
-  // e        = [ 0    I ]
-  Eigen::Matrix<double, States + Inputs, States + Inputs> phi;
-  phi.block<States, States>(0, 0) = A.Value();
-  phi.block<States, Inputs>(0, States) = B.Value();
-  phi.block<Inputs, States>(States, 0).setZero();
-  phi.block<Inputs, Inputs>(States, States).setIdentity();
-  decltype(phi) M = phi.log() / T;
+  //             A            B          c
+  //         [0       1]    [ 0  ]    [  0   ]
+  // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]
+  Eigen::Matrix<double, States, States> contA;
+  Eigen::Matrix<double, States, Inputs> contB;
+  Eigen::Matrix<double, States, Inputs> contC;
+  UndiscretizeAB(Eigen::Matrix<double, 2, 2>{A.Value()},
+                 Eigen::Matrix<double, 2, 1>{B.Value()}, units::second_t{T},
+                 &contA, &contB);
+  UndiscretizeAB(Eigen::Matrix<double, 2, 2>{A.Value()},
+                 Eigen::Matrix<double, 2, 1>{c.Value()}, units::second_t{T},
+                 &contA, &contC);
 
-  Eigen::Matrix<double, States, States> contA = M.block<States, States>(0, 0);
-  Eigen::Matrix<double, States, Inputs> contB =
-      M.block<States, Inputs>(0, States);
-
-  double alpha = contA(1, 1);
-  double beta = contB(1, 0);
-  double gamma = 0.0;
-
-  return {gamma, -alpha / beta, 1.0 / beta};
+  // Ks, Kv, Ka
+  return {-contC(1, 0) / contB(1, 0), -contA(1, 1) / contB(1, 0),
+          1.0 / contB(1, 0)};
 }
 
 /**
