@@ -237,7 +237,8 @@ FeedforwardGains SolveNonlinearProblem(const wpi::json& json,
 
       double T = t_k1 - t_k;
 
-      // xₖ₊₁ = eᴬᵗxₖ + A⁻¹(eᴬᵗ − 1)(Buₖ + c)
+      // dx/dt = Ax + Bu + c
+      // xₖ₊₁ = eᴬᵀxₖ + A⁻¹(eᴬᵀ − 1)(Buₖ + c)
       // xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
       auto A = -Kv / Ka;
       auto B = 1 / Ka;

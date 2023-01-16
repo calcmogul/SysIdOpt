@@ -47,14 +47,15 @@ def main():
 
     J = 0
     for k in range(len(ts) - 1):
-        dt = ts[k + 1] - ts[k]
+        T = ts[k + 1] - ts[k]
 
-        # xₖ₊₁ = eᴬᵗxₖ + A⁻¹(eᴬᵗ − 1)(Buₖ + c)
+        # dx/dt = Ax + Bu + c
+        # xₖ₊₁ = eᴬᵀxₖ + A⁻¹(eᴬᵀ − 1)(Buₖ + c)
         # xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
         A = -Kv / Ka
         B = 1 / Ka
-        c = Ks * sign(xs[k])
-        A_d = ca.exp(A * dt)
+        c = -Ks / Ka * sign(xs[k])
+        A_d = ca.exp(A * T)
         f = lambda x, u: A_d * x + 1 / A * (A_d - 1) * (B * u + c)
 
         J += (xs[k + 1] - f(xs[k], us[k])) ** 2
