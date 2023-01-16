@@ -186,7 +186,7 @@ FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
 
   problem.Solve();
 
-  //             A            B          c
+  //              A           B          c
   //         [0       1]    [ 0  ]    [  0   ]
   // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]
   Eigen::Matrix<double, States, States> contA;
