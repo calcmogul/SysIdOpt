@@ -15,6 +15,8 @@
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
 
+#include "MatrixUtils.hpp"
+
 double sign(double x) {
   if (x > 0.0) {
     return 1.0;
@@ -34,39 +36,6 @@ double ToMilliseconds(const std::chrono::duration<Rep, Period>& duration) {
   using std::chrono::duration_cast;
   using std::chrono::microseconds;
   return duration_cast<microseconds>(duration).count() / 1000.0;
-}
-
-/**
- * Undiscretizes the given continuous A and B matrices.
- *
- * @tparam States Number of states.
- * @tparam Inputs Number of inputs.
- * @param discA Discrete system matrix.
- * @param discB Discrete input matrix.
- * @param dt    Discretization timestep.
- * @param contA Storage for continuous system matrix.
- * @param contB Storage for continuous input matrix.
- */
-template <int States, int Inputs>
-void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
-                    const Eigen::Matrix<double, States, Inputs>& discB,
-                    units::second_t dt,
-                    Eigen::Matrix<double, States, States>* contA,
-                    Eigen::Matrix<double, States, Inputs>* contB) {
-  // ϕ = [A_d  B_d]
-  //     [ 0    I ]
-  Eigen::Matrix<double, States + Inputs, States + Inputs> phi;
-  phi.template block<States, States>(0, 0) = discA;
-  phi.template block<States, Inputs>(0, States) = discB;
-  phi.template block<Inputs, States>(States, 0).setZero();
-  phi.template block<Inputs, Inputs>(States, States).setIdentity();
-
-  // M = log(ϕ/T) = [A  B]  // NOLINT
-  //                [0  0]
-  decltype(phi) M = phi.log() / dt.value();
-
-  *contA = M.template block<States, States>(0, 0);
-  *contB = M.template block<States, Inputs>(0, States);
 }
 
 struct FeedforwardGains {
@@ -232,6 +201,9 @@ FeedforwardGains SolveLinearSystem(const wpi::json& json) {
  */
 FeedforwardGains SolveNonlinear(const wpi::json& json,
                                 const FeedforwardGains& initialGuess) {
+  constexpr int States = 2;
+  constexpr int Inputs = 1;
+
   sleipnir::OptimizationProblem problem;
 
   auto Ks = problem.DecisionVariable();
@@ -254,23 +226,46 @@ FeedforwardGains SolveNonlinear(const wpi::json& json,
     auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
-      auto& [t_k, u_k, p_k, x_k] = data[k];
-      auto& [t_k1, u_k1, p_k1, x_k1] = data[k + 1];
+      auto& [t_k, u_k, p_k, v_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      Eigen::Vector<double, States> x{{p_k}, {v_k}};
+      Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
+      Eigen::Vector<double, Inputs> u{u_k};
 
       double T = t_k1 - t_k;
 
       // dx/dt = Ax + Bu + c
       // xₖ₊₁ = eᴬᵀxₖ + A⁻¹(eᴬᵀ − 1)(Buₖ + c)
       // xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
-      auto A = -Kv / Ka;
-      auto B = 1 / Ka;
-      auto c = -Ks / Ka * sign(x_k);
-      auto A_d = sleipnir::exp(A * T);
+      sleipnir::VariableMatrix A{States, States};
+      A(0, 0) = 0;
+      A(0, 1) = 1;
+      A(1, 0) = 0;
+      A(1, 1) = -Kv / Ka;
+      sleipnir::VariableMatrix B{States, Inputs};
+      B(0, 0) = 0;
+      B(1, 0) = 1 / Ka;
+      sleipnir::VariableMatrix c{States, 1};
+      c(0, 0) = 0;
+      c(1, 0) = -Ks / Ka * sign(v_k);
+
+      // Discretize model without B so it can be reused for c
+      sleipnir::VariableMatrix M{States + Inputs, States + Inputs};
+      M.Block(0, 0, States, States) = A;
+      for (int row = 0; row < std::min(States, Inputs); ++row) {
+        M(row, States + row) = sleipnir::Variable{sleipnir::MakeConstant(1.0)};
+      }
+      sleipnir::VariableMatrix phi = expm(M * T);
+
+      sleipnir::VariableMatrix A_d = phi.Block(0, 0, States, States);
+      sleipnir::VariableMatrix B_d = phi.Block(0, States, States, Inputs) * B;
+      sleipnir::VariableMatrix c_d = phi.Block(0, States, States, Inputs) * c;
       auto f = [&](const auto& x, const auto& u) {
-        return A_d * x + 1 / A * (A_d - 1) * (B * u + c);
+        return A_d * x + B_d * u + c_d;
       };
 
-      J += sleipnir::pow(x_k1 - f(x_k, u_k), 2);
+      J += sleipnir::pow(x_next - f(x, u), 2);
     }
   }
   problem.Minimize(J);
