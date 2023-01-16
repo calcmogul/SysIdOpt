@@ -300,7 +300,7 @@ int main(int argc, const char* argv[]) {
   auto initialGuess = SolveSysIdOLS(json);
   auto endTime = std::chrono::system_clock::now();
 
-  fmt::print("Sleipnir SysId OLS\n");
+  fmt::print("Sleipnir SysId OLS (velocity only)\n");
   fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
   fmt::print("  Ks = {}\n", initialGuess.Ks);
   fmt::print("  Kv = {}\n", initialGuess.Kv);
@@ -310,7 +310,7 @@ int main(int argc, const char* argv[]) {
   auto initialGuess2 = SolveLinearSystem(json);
   endTime = std::chrono::system_clock::now();
 
-  fmt::print("Sleipnir LinearSystem\n");
+  fmt::print("Sleipnir LinearSystem (position and velocity)\n");
   fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
   fmt::print("  Ks = {}\n", initialGuess2.Ks);
   fmt::print("  Kv = {}\n", initialGuess2.Kv);
@@ -320,7 +320,7 @@ int main(int argc, const char* argv[]) {
   auto gains = SolveNonlinear(json, initialGuess);
   endTime = std::chrono::system_clock::now();
 
-  fmt::print("Sleipnir nonlinear\n");
+  fmt::print("Sleipnir nonlinear (position and velocity)\n");
   fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
   fmt::print("  Ks = {}\n", gains.Ks);
   fmt::print("  Kv = {}\n", gains.Kv);
