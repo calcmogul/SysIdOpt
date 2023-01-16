@@ -70,6 +70,8 @@ struct FeedforwardGains {
  * @return Initial guess for nonlinear problem.
  */
 FeedforwardGains SolveSysIdOLSProblem(const wpi::json& json) {
+  // Implements https://file.tavsys.net/control/sysid-ols.pdf
+
   // Find average timestep
   double T = 0.0;
   int elems = 0;
