@@ -1,6 +1,7 @@
 // Copyright (c) Tyler Veness
 
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <span>
 #include <vector>
@@ -22,6 +23,17 @@ double sign(double x) {
   } else {
     return 0.0;
   }
+}
+
+/**
+ * Converts std::chrono::duration to a number of milliseconds rounded to three
+ * decimals.
+ */
+template <typename Rep, typename Period = std::ratio<1>>
+double ToMilliseconds(const std::chrono::duration<Rep, Period>& duration) {
+  using std::chrono::duration_cast;
+  using std::chrono::microseconds;
+  return duration_cast<microseconds>(duration).count() / 1000.0;
 }
 
 /**
@@ -69,7 +81,7 @@ struct FeedforwardGains {
  * @param[in] json SysId JSON.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveSysIdOLSProblem(const wpi::json& json) {
+FeedforwardGains SolveSysIdOLS(const wpi::json& json) {
   // Implements https://file.tavsys.net/control/sysid-ols.pdf
 
   // Find average timestep
@@ -133,7 +145,7 @@ FeedforwardGains SolveSysIdOLSProblem(const wpi::json& json) {
  * @param[in] json SysId JSON.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
+FeedforwardGains SolveLinearSystem(const wpi::json& json) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
@@ -218,8 +230,8 @@ FeedforwardGains SolveLinearSystemProblem(const wpi::json& json) {
  * @param[in] json SysId JSON.
  * @param[in] initialGuess Initial guess from linear problem.
  */
-FeedforwardGains SolveNonlinearProblem(const wpi::json& json,
-                                       const FeedforwardGains& initialGuess) {
+FeedforwardGains SolveNonlinear(const wpi::json& json,
+                                const FeedforwardGains& initialGuess) {
   sleipnir::OptimizationProblem problem;
 
   auto Ks = problem.DecisionVariable();
@@ -289,18 +301,33 @@ int main(int argc, const char* argv[]) {
     is >> json;
   }
 
-  auto initialGuess = SolveSysIdOLSProblem(json);
-  fmt::print("OLS Ks = {}\n", initialGuess.Ks);
-  fmt::print("OLS Kv = {}\n", initialGuess.Kv);
-  fmt::print("OLS Ka = {}\n", initialGuess.Ka);
+  auto startTime = std::chrono::system_clock::now();
+  auto initialGuess = SolveSysIdOLS(json);
+  auto endTime = std::chrono::system_clock::now();
 
-  auto initialGuess2 = SolveLinearSystemProblem(json);
-  fmt::print("LinearSystem Ks = {}\n", initialGuess2.Ks);
-  fmt::print("LinearSystem Kv = {}\n", initialGuess2.Kv);
-  fmt::print("LinearSystem Ka = {}\n", initialGuess2.Ka);
+  fmt::print("Sleipnir SysId OLS\n");
+  fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
+  fmt::print("  Ks = {}\n", initialGuess.Ks);
+  fmt::print("  Kv = {}\n", initialGuess.Kv);
+  fmt::print("  Ka = {}\n", initialGuess.Ka);
 
-  auto gains = SolveNonlinearProblem(json, initialGuess);
-  fmt::print("Nonlinear Ks = {}\n", gains.Ks);
-  fmt::print("Nonlinear Kv = {}\n", gains.Kv);
-  fmt::print("Nonlinear Ka = {}\n", gains.Ka);
+  startTime = std::chrono::system_clock::now();
+  auto initialGuess2 = SolveLinearSystem(json);
+  endTime = std::chrono::system_clock::now();
+
+  fmt::print("Sleipnir LinearSystem\n");
+  fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
+  fmt::print("  Ks = {}\n", initialGuess2.Ks);
+  fmt::print("  Kv = {}\n", initialGuess2.Kv);
+  fmt::print("  Ka = {}\n", initialGuess2.Ka);
+
+  startTime = std::chrono::system_clock::now();
+  auto gains = SolveNonlinear(json, initialGuess);
+  endTime = std::chrono::system_clock::now();
+
+  fmt::print("Sleipnir nonlinear\n");
+  fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
+  fmt::print("  Ks = {}\n", gains.Ks);
+  fmt::print("  Kv = {}\n", gains.Kv);
+  fmt::print("  Ka = {}\n", gains.Ka);
 }
