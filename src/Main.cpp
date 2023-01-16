@@ -254,7 +254,7 @@ FeedforwardGains SolveNonlinear(const wpi::json& json,
       sleipnir::VariableMatrix M{States + Inputs, States + Inputs};
       M.Block(0, 0, States, States) = A;
       for (int row = 0; row < std::min(States, Inputs); ++row) {
-        M(row, States + row) = sleipnir::Variable{sleipnir::MakeConstant(1.0)};
+        M(row, States + row) = sleipnir::Constant(1.0);
       }
       sleipnir::VariableMatrix phi = expm(M * T);
 
