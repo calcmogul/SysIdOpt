@@ -241,7 +241,7 @@ FeedforwardGains SolveNonlinearProblem(const wpi::json& json,
       // xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
       auto A = -Kv / Ka;
       auto B = 1 / Ka;
-      auto c = Ks * sign(x_k);
+      auto c = -Ks / Ka * sign(x_k);
       auto A_d = sleipnir::exp(A * T);
       auto f = [&](const auto& x, const auto& u) {
         return A_d * x + 1 / A * (A_d - 1) * (B * u + c);
