@@ -256,6 +256,8 @@ FeedforwardGains SolveSleipnirLinearSystem(
       Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
       Eigen::Vector<double, Inputs> u{u_k};
 
+      // See equation (2.11) of
+      // https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
       Eigen::Matrix<double, 2, 2> Q{
           {1.0 / std::pow(positionStddev.value(), 2), 0.0},
           {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
