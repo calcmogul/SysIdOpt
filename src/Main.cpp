@@ -50,7 +50,7 @@ struct FeedforwardGains {
  * @param[in] json SysId JSON.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveSysIdOLS(const wpi::json& json) {
+FeedforwardGains SolveSleipnirSysIdOLS(const wpi::json& json) {
   // Implements https://file.tavsys.net/control/sysid-ols.pdf
 
   // Find average timestep
@@ -114,7 +114,7 @@ FeedforwardGains SolveSysIdOLS(const wpi::json& json) {
  * @param[in] json SysId JSON.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveLinearSystem(const wpi::json& json) {
+FeedforwardGains SolveSleipnirLinearSystem(const wpi::json& json) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
@@ -199,8 +199,8 @@ FeedforwardGains SolveLinearSystem(const wpi::json& json) {
  * @param[in] json SysId JSON.
  * @param[in] initialGuess Initial guess from linear problem.
  */
-FeedforwardGains SolveNonlinear(const wpi::json& json,
-                                const FeedforwardGains& initialGuess) {
+FeedforwardGains SolveSleipnirNonlinear(const wpi::json& json,
+                                        const FeedforwardGains& initialGuess) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
@@ -297,7 +297,7 @@ int main(int argc, const char* argv[]) {
   }
 
   auto startTime = std::chrono::system_clock::now();
-  auto initialGuessSysIdOLS = SolveSysIdOLS(json);
+  auto initialGuessSysIdOLS = SolveSleipnirSysIdOLS(json);
   auto endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir SysId OLS (velocity only)\n");
@@ -307,7 +307,7 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessSysIdOLS.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto initialGuessLinearSystem = SolveLinearSystem(json);
+  auto initialGuessLinearSystem = SolveSleipnirLinearSystem(json);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir LinearSystem (position and velocity)\n");
@@ -317,7 +317,7 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessLinearSystem.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto gains = SolveNonlinear(json, initialGuessLinearSystem);
+  auto gains = SolveSleipnirNonlinear(json, initialGuessLinearSystem);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir nonlinear (position and velocity)\n");
