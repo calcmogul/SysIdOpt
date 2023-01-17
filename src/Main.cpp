@@ -392,6 +392,10 @@ FeedforwardGains SolveSleipnirNonlinear(
 }
 
 int main(int argc, const char* argv[]) {
+  constexpr units::meters_per_second_t kMotionThreshold = 0.1_mps;
+  constexpr units::meter_t kPositionStddev = 0.1_m;
+  constexpr units::meters_per_second_t kVelocityStddev = 0.2_mps;
+
   std::span args(argv, argc);
 
   if (args.size() == 1) {
@@ -413,7 +417,7 @@ int main(int argc, const char* argv[]) {
   }
 
   auto startTime = std::chrono::system_clock::now();
-  auto initialGuessEigenSysIdOLS = SolveEigenSysIdOLS(json, 0.1_mps);
+  auto initialGuessEigenSysIdOLS = SolveEigenSysIdOLS(json, kMotionThreshold);
   auto endTime = std::chrono::system_clock::now();
 
   fmt::print("Eigen SysId OLS (velocity only)\n");
@@ -423,7 +427,8 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessEigenSysIdOLS.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto initialGuessSleipnirSysIdOLS = SolveSleipnirSysIdOLS(json, 0.1_mps);
+  auto initialGuessSleipnirSysIdOLS =
+      SolveSleipnirSysIdOLS(json, kMotionThreshold);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir SysId OLS (velocity only)\n");
@@ -433,8 +438,8 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessSleipnirSysIdOLS.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto initialGuessSleipnirLinearSystem =
-      SolveSleipnirLinearSystem(json, 0.1_mps, 0.1_m, 0.2_mps);
+  auto initialGuessSleipnirLinearSystem = SolveSleipnirLinearSystem(
+      json, kMotionThreshold, kPositionStddev, kVelocityStddev);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir LinearSystem (position and velocity)\n");
@@ -444,8 +449,9 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessSleipnirLinearSystem.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto gains = SolveSleipnirNonlinear(json, 0.1_mps, 0.1_m, 0.2_mps,
-                                      initialGuessSleipnirLinearSystem);
+  auto gains =
+      SolveSleipnirNonlinear(json, kMotionThreshold, kPositionStddev,
+                             kVelocityStddev, initialGuessSleipnirLinearSystem);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir nonlinear (position and velocity)\n");
