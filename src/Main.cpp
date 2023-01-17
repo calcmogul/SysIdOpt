@@ -395,7 +395,7 @@ FeedforwardGains SolveSleipnirNonlinear(
 
 int main(int argc, const char* argv[]) {
   constexpr units::meters_per_second_t kMotionThreshold = 0.1_mps;
-  constexpr units::meter_t kPositionStddev = 0.1_m;
+  constexpr units::meter_t kPositionStddev = 1_cm;
   constexpr units::meters_per_second_t kVelocityStddev = 0.2_mps;
 
   std::span args(argv, argc);
