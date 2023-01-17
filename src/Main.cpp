@@ -45,7 +45,75 @@ struct FeedforwardGains {
 };
 
 /**
- * Solves SysId's OLS problem to produce initial guess for nonlinear problem.
+ * Solves SysId's OLS problem with Eigen to produce initial guess for nonlinear
+ * problem.
+ *
+ * @param[in] json SysId JSON.
+ * @return Initial guess for nonlinear problem.
+ */
+FeedforwardGains SolveEigenSysIdOLS(const wpi::json& json) {
+  // Find average timestep
+  double T = 0.0;
+  int elems = 0;
+  for (auto&& testName :
+       {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
+    auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
+
+    for (size_t k = 0; k < data.size() - 1; ++k) {
+      auto& [t_k, u_k, p_k, v_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      T += t_k1 - t_k;
+      ++elems;
+    }
+  }
+  T /= static_cast<double>(elems);
+
+  Eigen::MatrixXd X{elems, 3};
+  Eigen::MatrixXd y{elems, 1};
+
+  int elem = 0;
+  for (auto&& testName :
+       {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
+    // See
+    // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
+    //
+    // Non-Drivetrain Mechanisms:
+    //   timestamp, voltage, position, velocity
+    auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
+
+    for (size_t k = 0; k < data.size() - 1; ++k) {
+      auto& [t_k, u_k, p_k, x_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, x_k1] = data[k + 1];
+
+      // Add the velocity term (for alpha)
+      X(elem, 0) = x_k;
+
+      // Add the voltage term (for beta)
+      X(elem, 1) = u_k;
+
+      // Add the intercept term (for gamma)
+      X(elem, 2) = std::copysign(1.0, x_k);
+
+      // Add the dependent variable (acceleration)
+      y(elem, 0) = (x_k1 - x_k) / T;
+
+      ++elem;
+    }
+  }
+
+  Eigen::MatrixXd b = (X.transpose() * X).llt().solve(X.transpose() * y);
+
+  double alpha = b(0, 0);
+  double beta = b(1, 0);
+  double gamma = b(2, 0);
+
+  return {-gamma / beta, -alpha / beta, 1.0 / beta};
+}
+
+/**
+ * Solves SysId's OLS problem with Sleipnir to produce initial guess for
+ * nonlinear problem.
  *
  * @param[in] json SysId JSON.
  * @return Initial guess for nonlinear problem.
@@ -108,8 +176,8 @@ FeedforwardGains SolveSleipnirSysIdOLS(const wpi::json& json) {
 }
 
 /**
- * Solves linear system ID problem to produce initial guess for nonlinear
- * problem.
+ * Solves linear system ID problem with Sleipnir to produce initial guess for
+ * nonlinear problem.
  *
  * @param[in] json SysId JSON.
  * @return Initial guess for nonlinear problem.
@@ -194,7 +262,7 @@ FeedforwardGains SolveSleipnirLinearSystem(const wpi::json& json) {
 }
 
 /**
- * Solves nonlinear system ID problem.
+ * Solves nonlinear system ID problem with Sleipnir.
  *
  * @param[in] json SysId JSON.
  * @param[in] initialGuess Initial guess from linear problem.
@@ -297,27 +365,37 @@ int main(int argc, const char* argv[]) {
   }
 
   auto startTime = std::chrono::system_clock::now();
-  auto initialGuessSysIdOLS = SolveSleipnirSysIdOLS(json);
+  auto initialGuessEigenSysIdOLS = SolveEigenSysIdOLS(json);
   auto endTime = std::chrono::system_clock::now();
+
+  fmt::print("Eigen SysId OLS (velocity only)\n");
+  fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
+  fmt::print("  Ks = {}\n", initialGuessEigenSysIdOLS.Ks);
+  fmt::print("  Kv = {}\n", initialGuessEigenSysIdOLS.Kv);
+  fmt::print("  Ka = {}\n", initialGuessEigenSysIdOLS.Ka);
+
+  startTime = std::chrono::system_clock::now();
+  auto initialGuessSleipnirSysIdOLS = SolveSleipnirSysIdOLS(json);
+  endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir SysId OLS (velocity only)\n");
   fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
-  fmt::print("  Ks = {}\n", initialGuessSysIdOLS.Ks);
-  fmt::print("  Kv = {}\n", initialGuessSysIdOLS.Kv);
-  fmt::print("  Ka = {}\n", initialGuessSysIdOLS.Ka);
+  fmt::print("  Ks = {}\n", initialGuessSleipnirSysIdOLS.Ks);
+  fmt::print("  Kv = {}\n", initialGuessSleipnirSysIdOLS.Kv);
+  fmt::print("  Ka = {}\n", initialGuessSleipnirSysIdOLS.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto initialGuessLinearSystem = SolveSleipnirLinearSystem(json);
+  auto initialGuessSleipnirLinearSystem = SolveSleipnirLinearSystem(json);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir LinearSystem (position and velocity)\n");
   fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
-  fmt::print("  Ks = {}\n", initialGuessLinearSystem.Ks);
-  fmt::print("  Kv = {}\n", initialGuessLinearSystem.Kv);
-  fmt::print("  Ka = {}\n", initialGuessLinearSystem.Ka);
+  fmt::print("  Ks = {}\n", initialGuessSleipnirLinearSystem.Ks);
+  fmt::print("  Kv = {}\n", initialGuessSleipnirLinearSystem.Kv);
+  fmt::print("  Ka = {}\n", initialGuessSleipnirLinearSystem.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto gains = SolveSleipnirNonlinear(json, initialGuessLinearSystem);
+  auto gains = SolveSleipnirNonlinear(json, initialGuessSleipnirLinearSystem);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir nonlinear (position and velocity)\n");
