@@ -51,9 +51,12 @@ struct FeedforwardGains {
  * problem.
  *
  * @param[in] json SysId JSON.
+ * @param[in] motionThreshold Data with velocities closer to zero than this are
+ *   ignored.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveEigenSysIdOLS(const wpi::json& json) {
+FeedforwardGains SolveEigenSysIdOLS(
+    const wpi::json& json, units::meters_per_second_t motionThreshold) {
   // Find average timestep
   double T = 0.0;
   int elems = 0;
@@ -88,6 +91,11 @@ FeedforwardGains SolveEigenSysIdOLS(const wpi::json& json) {
       auto& [t_k, u_k, p_k, x_k] = data[k];
       auto& [t_k1, u_k1, p_k1, x_k1] = data[k + 1];
 
+      // Ignore data with velocity below motion threshold
+      if (std::abs(x_k) < motionThreshold.value()) {
+        continue;
+      }
+
       // Add the velocity term (for alpha)
       X(elem, 0) = x_k;
 
@@ -118,9 +126,12 @@ FeedforwardGains SolveEigenSysIdOLS(const wpi::json& json) {
  * nonlinear problem.
  *
  * @param[in] json SysId JSON.
+ * @param[in] motionThreshold Data with velocities closer to zero than this are
+ *   ignored.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveSleipnirSysIdOLS(const wpi::json& json) {
+FeedforwardGains SolveSleipnirSysIdOLS(
+    const wpi::json& json, units::meters_per_second_t motionThreshold) {
   // Implements https://file.tavsys.net/control/sysid-ols.pdf
 
   // Find average timestep
@@ -160,6 +171,11 @@ FeedforwardGains SolveSleipnirSysIdOLS(const wpi::json& json) {
       auto& [t_k, u_k, p_k, x_k] = data[k];
       auto& [t_k1, u_k1, p_k1, x_k1] = data[k + 1];
 
+      // Ignore data with velocity below motion threshold
+      if (std::abs(x_k) < motionThreshold.value()) {
+        continue;
+      }
+
       auto f = [&](const auto& x, const auto& u) {
         return alpha * x + beta * u + gamma * sign(x);
       };
@@ -182,13 +198,15 @@ FeedforwardGains SolveSleipnirSysIdOLS(const wpi::json& json) {
  * nonlinear problem.
  *
  * @param[in] json SysId JSON.
+ * @param[in] motionThreshold Data with velocities closer to zero than this are
+ *   ignored.
  * @param[in] positionStddev Position standard deviation.
  * @param[in] velocityStddev Velocity standard deviation.
  * @return Initial guess for nonlinear problem.
  */
 FeedforwardGains SolveSleipnirLinearSystem(
-    const wpi::json& json, units::meter_t positionStddev,
-    units::meters_per_second_t velocityStddev) {
+    const wpi::json& json, units::meters_per_second_t motionThreshold,
+    units::meter_t positionStddev, units::meters_per_second_t velocityStddev) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
@@ -228,6 +246,11 @@ FeedforwardGains SolveSleipnirLinearSystem(
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto& [t_k, u_k, p_k, v_k] = data[k];
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
 
       Eigen::Vector<double, States> x{{p_k}, {v_k}};
       Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
@@ -275,13 +298,15 @@ FeedforwardGains SolveSleipnirLinearSystem(
  * Solves nonlinear system ID problem with Sleipnir.
  *
  * @param[in] json SysId JSON.
+ * @param[in] motionThreshold Data with velocities closer to zero than this are
+ *   ignored.
  * @param[in] positionStddev Position standard deviation.
  * @param[in] velocityStddev Velocity standard deviation.
  * @param[in] initialGuess Initial guess from linear problem.
  */
 FeedforwardGains SolveSleipnirNonlinear(
-    const wpi::json& json, units::meter_t positionStddev,
-    units::meters_per_second_t velocityStddev,
+    const wpi::json& json, units::meters_per_second_t motionThreshold,
+    units::meter_t positionStddev, units::meters_per_second_t velocityStddev,
     const FeedforwardGains& initialGuess) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
@@ -310,6 +335,11 @@ FeedforwardGains SolveSleipnirNonlinear(
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto& [t_k, u_k, p_k, v_k] = data[k];
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
 
       Eigen::Vector<double, States> x{{p_k}, {v_k}};
       Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
@@ -383,7 +413,7 @@ int main(int argc, const char* argv[]) {
   }
 
   auto startTime = std::chrono::system_clock::now();
-  auto initialGuessEigenSysIdOLS = SolveEigenSysIdOLS(json);
+  auto initialGuessEigenSysIdOLS = SolveEigenSysIdOLS(json, 0.1_mps);
   auto endTime = std::chrono::system_clock::now();
 
   fmt::print("Eigen SysId OLS (velocity only)\n");
@@ -393,7 +423,7 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessEigenSysIdOLS.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto initialGuessSleipnirSysIdOLS = SolveSleipnirSysIdOLS(json);
+  auto initialGuessSleipnirSysIdOLS = SolveSleipnirSysIdOLS(json, 0.1_mps);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir SysId OLS (velocity only)\n");
@@ -404,7 +434,7 @@ int main(int argc, const char* argv[]) {
 
   startTime = std::chrono::system_clock::now();
   auto initialGuessSleipnirLinearSystem =
-      SolveSleipnirLinearSystem(json, 0.1_m, 0.2_mps);
+      SolveSleipnirLinearSystem(json, 0.1_mps, 0.1_m, 0.2_mps);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir LinearSystem (position and velocity)\n");
@@ -414,7 +444,7 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessSleipnirLinearSystem.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto gains = SolveSleipnirNonlinear(json, 0.1_m, 0.2_mps,
+  auto gains = SolveSleipnirNonlinear(json, 0.1_mps, 0.1_m, 0.2_mps,
                                       initialGuessSleipnirLinearSystem);
   endTime = std::chrono::system_clock::now();
 
