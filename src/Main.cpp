@@ -10,7 +10,9 @@
 #include <fmt/core.h>
 #include <frc/fmt/Eigen.h>
 #include <sleipnir/optimization/OptimizationProblem.hpp>
+#include <units/length.h>
 #include <units/time.h>
+#include <units/velocity.h>
 #include <unsupported/Eigen/MatrixFunctions>
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
@@ -180,9 +182,13 @@ FeedforwardGains SolveSleipnirSysIdOLS(const wpi::json& json) {
  * nonlinear problem.
  *
  * @param[in] json SysId JSON.
+ * @param[in] positionStddev Position standard deviation.
+ * @param[in] velocityStddev Velocity standard deviation.
  * @return Initial guess for nonlinear problem.
  */
-FeedforwardGains SolveSleipnirLinearSystem(const wpi::json& json) {
+FeedforwardGains SolveSleipnirLinearSystem(
+    const wpi::json& json, units::meter_t positionStddev,
+    units::meters_per_second_t velocityStddev) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
@@ -227,7 +233,11 @@ FeedforwardGains SolveSleipnirLinearSystem(const wpi::json& json) {
       Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
       Eigen::Vector<double, Inputs> u{u_k};
 
-      J += (x_next - (A * x + B * u + c * sign(v_k))).T() *
+      Eigen::Matrix<double, 2, 2> Q{
+          {1.0 / std::pow(positionStddev.value(), 2), 0.0},
+          {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
+
+      J += (x_next - (A * x + B * u + c * sign(v_k))).T() * Q *
            (x_next - (A * x + B * u + c * sign(v_k)));
     }
   }
@@ -265,10 +275,14 @@ FeedforwardGains SolveSleipnirLinearSystem(const wpi::json& json) {
  * Solves nonlinear system ID problem with Sleipnir.
  *
  * @param[in] json SysId JSON.
+ * @param[in] positionStddev Position standard deviation.
+ * @param[in] velocityStddev Velocity standard deviation.
  * @param[in] initialGuess Initial guess from linear problem.
  */
-FeedforwardGains SolveSleipnirNonlinear(const wpi::json& json,
-                                        const FeedforwardGains& initialGuess) {
+FeedforwardGains SolveSleipnirNonlinear(
+    const wpi::json& json, units::meter_t positionStddev,
+    units::meters_per_second_t velocityStddev,
+    const FeedforwardGains& initialGuess) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
@@ -333,7 +347,11 @@ FeedforwardGains SolveSleipnirNonlinear(const wpi::json& json,
         return A_d * x + B_d * u + c_d;
       };
 
-      J += sleipnir::pow(x_next - f(x, u), 2);
+      Eigen::Matrix<double, 2, 2> Q{
+          {1.0 / std::pow(positionStddev.value(), 2), 0.0},
+          {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
+
+      J += (x_next - f(x, u)).T() * Q * (x_next - f(x, u));
     }
   }
   problem.Minimize(J);
@@ -385,7 +403,8 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessSleipnirSysIdOLS.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto initialGuessSleipnirLinearSystem = SolveSleipnirLinearSystem(json);
+  auto initialGuessSleipnirLinearSystem =
+      SolveSleipnirLinearSystem(json, 0.1_m, 0.2_mps);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir LinearSystem (position and velocity)\n");
@@ -395,7 +414,8 @@ int main(int argc, const char* argv[]) {
   fmt::print("  Ka = {}\n", initialGuessSleipnirLinearSystem.Ka);
 
   startTime = std::chrono::system_clock::now();
-  auto gains = SolveSleipnirNonlinear(json, initialGuessSleipnirLinearSystem);
+  auto gains = SolveSleipnirNonlinear(json, 0.1_m, 0.2_mps,
+                                      initialGuessSleipnirLinearSystem);
   endTime = std::chrono::system_clock::now();
 
   fmt::print("Sleipnir nonlinear (position and velocity)\n");
