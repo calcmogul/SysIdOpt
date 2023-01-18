@@ -362,7 +362,7 @@ FeedforwardGains SolveSleipnirNonlinear(
       B(1, 0) = 1 / Ka;
       sleipnir::VariableMatrix c{States, 1};
       c(0, 0) = 0;
-      c(1, 0) = -Ks / Ka * sign(v_k);
+      c(1, 0) = -Ks / Ka;
 
       // Discretize model without B so it can be reused for c
       sleipnir::VariableMatrix M{States + Inputs, States + Inputs};
@@ -376,7 +376,7 @@ FeedforwardGains SolveSleipnirNonlinear(
       sleipnir::VariableMatrix B_d = phi.Block(0, States, States, Inputs) * B;
       sleipnir::VariableMatrix c_d = phi.Block(0, States, States, Inputs) * c;
       auto f = [&](const auto& x, const auto& u) {
-        return A_d * x + B_d * u + c_d;
+        return A_d * x + B_d * u + c_d * sign(x(1, 0));
       };
 
       Eigen::Matrix<double, 2, 2> sigmaInv{
