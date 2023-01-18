@@ -258,11 +258,11 @@ FeedforwardGains SolveSleipnirLinearSystem(
 
       // See equation (2.11) of
       // https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
-      Eigen::Matrix<double, 2, 2> Q{
+      Eigen::Matrix<double, 2, 2> sigmaInv{
           {1.0 / std::pow(positionStddev.value(), 2), 0.0},
           {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
 
-      J += (x_next - (A * x + B * u + c * sign(v_k))).T() * Q *
+      J += (x_next - (A * x + B * u + c * sign(v_k))).T() * sigmaInv *
            (x_next - (A * x + B * u + c * sign(v_k)));
     }
   }
@@ -379,11 +379,11 @@ FeedforwardGains SolveSleipnirNonlinear(
         return A_d * x + B_d * u + c_d;
       };
 
-      Eigen::Matrix<double, 2, 2> Q{
+      Eigen::Matrix<double, 2, 2> sigmaInv{
           {1.0 / std::pow(positionStddev.value(), 2), 0.0},
           {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
 
-      J += (x_next - f(x, u)).T() * Q * (x_next - f(x, u));
+      J += (x_next - f(x, u)).T() * sigmaInv * (x_next - f(x, u));
     }
   }
   problem.Minimize(J);
