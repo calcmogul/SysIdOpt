@@ -229,9 +229,10 @@ FeedforwardGains SolveSleipnirLinearSystem(
 
   sleipnir::OptimizationProblem problem;
 
-  auto A = problem.DecisionVariable(2, 2);
-  auto B = problem.DecisionVariable(2, 1);
-  auto c = problem.DecisionVariable(2, 1);
+  auto a = problem.DecisionVariable();
+  auto b = problem.DecisionVariable();
+  auto c = problem.DecisionVariable();
+  auto d = problem.DecisionVariable();
 
   sleipnir::Variable J = 0.0;
   for (auto&& testName :
@@ -252,44 +253,36 @@ FeedforwardGains SolveSleipnirLinearSystem(
         continue;
       }
 
-      Eigen::Vector<double, States> x{{p_k}, {v_k}};
-      Eigen::Vector<double, States> x_next{{p_k1}, {v_k1}};
-      Eigen::Vector<double, Inputs> u{u_k};
-
       // See equation (2.11) of
       // https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
-      Eigen::Matrix<double, 2, 2> sigmaInv{
-          {1.0 / std::pow(positionStddev.value(), 2), 0.0},
-          {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
+      double pWeight = 1.0 / std::pow(positionStddev.value(), 2);
+      double vWeight = 1.0 / std::pow(velocityStddev.value(), 2);
 
-      J += (x_next - (A * x + B * u + c * sign(v_k))).T() * sigmaInv *
-           (x_next - (A * x + B * u + c * sign(v_k)));
+      //          A         B       c
+      //        [1  a]     [0]     [0]
+      // xₖ₊₁ = [0  b]xₖ + [c]uₖ + [d]sgn(xₖ)
+      J += pWeight * sleipnir::pow(p_k1 - (p_k + a * v_k), 2);
+      J += vWeight *
+           sleipnir::pow(v_k1 - (b * v_k + c * u_k + d * sign(v_k)), 2);
     }
   }
   problem.Minimize(J);
 
-  //          A         B       c
-  //        [1  ?]     [0]     [0]
-  // xₖ₊₁ = [0  ?]xₖ + [?]uₖ + [?]sgn(xₖ)
-  problem.SubjectTo(A(0, 0) == 1);
-  problem.SubjectTo(A(1, 0) == 0);
-  problem.SubjectTo(B(0, 0) == 0);
-  problem.SubjectTo(c(0, 0) == 0);
-
   problem.Solve();
+
+  Eigen::Matrix<double, States, States> discA{{1.0, a.Value()},
+                                              {0.0, b.Value()}};
+  Eigen::Matrix<double, States, Inputs> discB{{0.0}, {c.Value()}};
+  Eigen::Matrix<double, States, Inputs> discC{{0.0}, {d.Value()}};
+  Eigen::Matrix<double, States, States> contA;
+  Eigen::Matrix<double, States, Inputs> contB;
+  Eigen::Matrix<double, States, Inputs> contC;
+  UndiscretizeAB(discA, discB, units::second_t{T}, &contA, &contB);
+  UndiscretizeAB(discA, discC, units::second_t{T}, &contA, &contC);
 
   //              A           B          c
   //         [0     1  ]    [ 0  ]    [  0   ]
   // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]sgn(x)
-  Eigen::Matrix<double, States, States> contA;
-  Eigen::Matrix<double, States, Inputs> contB;
-  Eigen::Matrix<double, States, Inputs> contC;
-  UndiscretizeAB(Eigen::Matrix<double, 2, 2>{A.Value()},
-                 Eigen::Matrix<double, 2, 1>{B.Value()}, units::second_t{T},
-                 &contA, &contB);
-  UndiscretizeAB(Eigen::Matrix<double, 2, 2>{A.Value()},
-                 Eigen::Matrix<double, 2, 1>{c.Value()}, units::second_t{T},
-                 &contA, &contC);
 
   // Ks, Kv, Ka
   return {-contC(1, 0) / contB(1, 0), -contA(1, 1) / contB(1, 0),
