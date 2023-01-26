@@ -49,7 +49,7 @@ FeedforwardGains SolveEigenSysIdOLS(
     const wpi::json& json, units::meters_per_second_t motionThreshold) {
   // Find average timestep
   double T = 0.0;
-  int elems = 0;
+  int samples = 0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
@@ -59,15 +59,15 @@ FeedforwardGains SolveEigenSysIdOLS(
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
       T += t_k1 - t_k;
-      ++elems;
+      ++samples;
     }
   }
-  T /= static_cast<double>(elems);
+  T /= static_cast<double>(samples);
 
-  Eigen::MatrixXd X{elems, 3};
-  Eigen::MatrixXd y{elems, 1};
+  Eigen::MatrixXd X{samples, 3};
+  Eigen::MatrixXd y{samples, 1};
 
-  int elem = 0;
+  int sample = 0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
@@ -87,18 +87,18 @@ FeedforwardGains SolveEigenSysIdOLS(
       }
 
       // Add the velocity term (for alpha)
-      X(elem, 0) = x_k;
+      X(sample, 0) = x_k;
 
       // Add the voltage term (for beta)
-      X(elem, 1) = u_k;
+      X(sample, 1) = u_k;
 
       // Add the intercept term (for gamma)
-      X(elem, 2) = std::copysign(1.0, x_k);
+      X(sample, 2) = std::copysign(1.0, x_k);
 
       // Add the dependent variable (acceleration)
-      y(elem, 0) = (x_k1 - x_k) / T;
+      y(sample, 0) = (x_k1 - x_k) / T;
 
-      ++elem;
+      ++sample;
     }
   }
 
@@ -109,6 +109,159 @@ FeedforwardGains SolveEigenSysIdOLS(
   double gamma = b(2, 0);
 
   return {-gamma / beta, -alpha / beta, 1.0 / beta};
+}
+
+/**
+ * Solves linear system ID problem with Eigen to produce initial guess for
+ * nonlinear problem.
+ *
+ * @param[in] json SysId JSON.
+ * @param[in] motionThreshold Data with velocities closer to zero than this are
+ *   ignored.
+ * @param[in] positionStddev Position standard deviation.
+ * @param[in] velocityStddev Velocity standard deviation.
+ * @return Initial guess for nonlinear problem.
+ */
+FeedforwardGains SolveEigenLinearSystem(
+    const wpi::json& json, units::meters_per_second_t motionThreshold,
+    units::meter_t positionStddev, units::meters_per_second_t velocityStddev) {
+  // [p]    = [1  a][p]  + [0]   + [0]
+  // [v]ₖ₊₁   [0  b][v]ₖ   [c]uₖ   [d]sgn(vₖ)
+  //
+  // [p]    = [pₖ] + [vₖa] + [ 0 ] + [   0    ]
+  // [v]ₖ₊₁   [0 ]   [vₖb]   [uₖc]   [sgn(vₖ)d]
+  //
+  // [pₖ₊₁ - pₖ] = [vₖa] + [ 0 ] + [   0    ]
+  // [  vₖ₊₁   ]   [vₖb]   [uₖc]   [sgn(vₖ)d]
+  //
+  // [pₖ₊₁ - pₖ] = [vₖa] + [ 0 ] + [ 0 ] + [   0    ]
+  // [  vₖ₊₁   ]   [ 0 ]   [vₖb]   [uₖc]   [sgn(vₖ)d]
+  //
+  // [pₖ₊₁ - pₖ] = [vₖ]  + [0 ]  + [0 ]  + [   0   ]
+  // [  vₖ₊₁   ]   [0 ]a   [vₖ]b   [uₖ]c   [sgn(vₖ)]d
+  //
+  //                                   [a]
+  // [pₖ₊₁ - pₖ] = [vₖ  0   0     0   ][b]
+  // [  vₖ₊₁   ]   [0   vₖ  uₖ sgn(vₖ)][c]
+  //                                   [d]
+  //
+  //     [vₖ  0   0     0   ]
+  // X = [0   vₖ  uₖ sgn(vₖ)]
+  //     [        ⋮         ]
+  //
+  //     [pₖ₊₁ - pₖ]
+  // y = [  vₖ₊₁   ]
+  //     [    ⋮    ]
+  //
+  // W = diag([1/σₚ², 1/σᵥ², …])
+  //
+  //     [a]
+  // β = [b]
+  //     [c]
+  //     [d]
+  //
+  // argmin rᵀr
+  //   β
+  // where r = y - Xβ
+  //
+  // (XᵀWX)β = XᵀWy
+  //
+  // Let N be the number of samples.
+  //
+  // dim(y) = 2N x 1
+  // dim(X) = 2N x 4
+  // dim(β) = 4 x 1
+  // dim(W) = 2N x 2N
+
+  constexpr int States = 2;
+  constexpr int Inputs = 1;
+
+  // Find average timestep
+  double T = 0.0;
+  int samples = 0;
+  for (auto&& testName :
+       {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
+    auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
+
+    for (size_t k = 0; k < data.size() - 1; ++k) {
+      auto& [t_k, u_k, p_k, v_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      T += t_k1 - t_k;
+      ++samples;
+    }
+  }
+  T /= static_cast<double>(samples);
+
+  Eigen::MatrixXd X{2 * samples, 4};
+  Eigen::MatrixXd y{2 * samples, 1};
+  Eigen::MatrixXd W{2 * samples, 2 * samples};
+  W.setZero();
+
+  int sample = 0;
+  for (auto&& testName :
+       {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
+    // See
+    // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
+    //
+    // Non-Drivetrain Mechanisms:
+    //   timestamp, voltage, position, velocity
+    auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
+
+    for (size_t k = 0; k < data.size() - 1; ++k) {
+      auto& [t_k, u_k, p_k, v_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
+
+      //     [vₖ  0   0     0   ]
+      // X = [0   vₖ  uₖ sgn(vₖ)]
+      //     [        ⋮         ]
+      X.block(2 * sample, 0, 2, 4) = Eigen::Matrix<double, 2, 4>{
+          {v_k, 0.0, 0.0, 0.0}, {0.0, v_k, u_k, std::copysign(1.0, v_k)}};
+
+      //     [pₖ₊₁ - pₖ]
+      // y = [  vₖ₊₁   ]
+      //     [    ⋮    ]
+      y(2 * sample, 0) = p_k1 - p_k;
+      y(2 * sample + 1, 0) = v_k1;
+
+      // W = diag([1/σₚ², 1/σᵥ², …])
+      W(2 * sample, 2 * sample) = 1.0 / std::pow(positionStddev.value(), 2);
+      W(2 * sample + 1, 2 * sample + 1) =
+          1.0 / std::pow(velocityStddev.value(), 2);
+
+      ++sample;
+    }
+  }
+
+  Eigen::MatrixXd beta =
+      (X.transpose() * W * X).llt().solve(X.transpose() * W * y);
+
+  double a = beta(0, 0);
+  double b = beta(1, 0);
+  double c = beta(2, 0);
+  double d = beta(3, 0);
+
+  Eigen::Matrix<double, States, States> discA{{1.0, a}, {0.0, b}};
+  Eigen::Matrix<double, States, Inputs> discB{{0.0}, {c}};
+  Eigen::Matrix<double, States, Inputs> discC{{0.0}, {d}};
+  Eigen::Matrix<double, States, States> contA;
+  Eigen::Matrix<double, States, Inputs> contB;
+  Eigen::Matrix<double, States, Inputs> contC;
+  UndiscretizeAB(discA, discB, units::second_t{T}, &contA, &contB);
+  UndiscretizeAB(discA, discC, units::second_t{T}, &contA, &contC);
+
+  //              A           B          c
+  //         [0     1  ]    [ 0  ]    [  0   ]
+  // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]sgn(x)
+
+  // Ks, Kv, Ka
+  return {-contC(1, 0) / contB(1, 0), -contA(1, 1) / contB(1, 0),
+          1.0 / contB(1, 0)};
 }
 
 /**
@@ -126,7 +279,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
 
   // Find average timestep
   double T = 0.0;
-  int elems = 0;
+  int samples = 0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
@@ -136,10 +289,10 @@ FeedforwardGains SolveSleipnirSysIdOLS(
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
       T += t_k1 - t_k;
-      ++elems;
+      ++samples;
     }
   }
-  T /= static_cast<double>(elems);
+  T /= static_cast<double>(samples);
 
   sleipnir::OptimizationProblem problem;
 
@@ -202,7 +355,7 @@ FeedforwardGains SolveSleipnirLinearSystem(
 
   // Find average timestep
   double T = 0.0;
-  int elems = 0;
+  int samples = 0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
@@ -212,10 +365,10 @@ FeedforwardGains SolveSleipnirLinearSystem(
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
       T += t_k1 - t_k;
-      ++elems;
+      ++samples;
     }
   }
-  T /= static_cast<double>(elems);
+  T /= static_cast<double>(samples);
 
   sleipnir::OptimizationProblem problem;
 
@@ -426,6 +579,10 @@ int main(int argc, const char* argv[]) {
 
   RunSolve("Eigen SysId OLS (velocity only)",
            [&] { return SolveEigenSysIdOLS(json, kMotionThreshold); });
+  RunSolve("Eigen LinearSystem (position and velocity)", [&] {
+    return SolveEigenLinearSystem(json, kMotionThreshold, kPositionStddev,
+                                  kVelocityStddev);
+  });
   RunSolve("Sleipnir SysId OLS (velocity only)",
            [&] { return SolveSleipnirSysIdOLS(json, kMotionThreshold); });
   auto initialGuess =
