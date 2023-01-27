@@ -19,16 +19,6 @@
 
 #include "MatrixUtils.hpp"
 
-double sign(double x) {
-  if (x > 0.0) {
-    return 1.0;
-  } else if (x < 0.0) {
-    return -1.0;
-  } else {
-    return 0.0;
-  }
-}
-
 /**
  * Converts std::chrono::duration to a number of milliseconds rounded to three
  * decimals.
@@ -177,7 +167,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
       }
 
       auto f = [&](const auto& x, const auto& u) {
-        return alpha * x + beta * u + gamma * sign(x);
+        return alpha * x + beta * u + gamma * std::copysign(1.0, x);
       };
 
       J += sleipnir::pow(x_k1 - f(x_k, u_k), 2);
@@ -263,7 +253,8 @@ FeedforwardGains SolveSleipnirLinearSystem(
       // xₖ₊₁ = [0  b]xₖ + [c]uₖ + [d]sgn(xₖ)
       J += pWeight * sleipnir::pow(p_k1 - (p_k + a * v_k), 2);
       J += vWeight *
-           sleipnir::pow(v_k1 - (b * v_k + c * u_k + d * sign(v_k)), 2);
+           sleipnir::pow(
+               v_k1 - (b * v_k + c * u_k + d * std::copysign(1.0, v_k)), 2);
     }
   }
   problem.Minimize(J);
@@ -369,7 +360,7 @@ FeedforwardGains SolveSleipnirNonlinear(
       sleipnir::VariableMatrix B_d = phi.Block(0, States, States, Inputs) * B;
       sleipnir::VariableMatrix c_d = phi.Block(0, States, States, Inputs) * c;
       auto f = [&](const auto& x, const auto& u) {
-        return A_d * x + B_d * u + c_d * sign(x(1, 0));
+        return A_d * x + B_d * u + c_d * std::copysign(1.0, x(1, 0));
       };
 
       Eigen::Matrix<double, 2, 2> sigmaInv{
