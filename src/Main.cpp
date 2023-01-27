@@ -102,6 +102,7 @@ FeedforwardGains SolveEigenSysIdOLS(
     }
   }
 
+  // Solve (XᵀX)β = Xᵀy
   Eigen::MatrixXd b = (X.transpose() * X).llt().solve(X.transpose() * y);
 
   double alpha = b(0, 0);
@@ -195,8 +196,6 @@ FeedforwardGains SolveEigenLinearSystem(
 
   Eigen::MatrixXd X{2 * samples, 4};
   Eigen::MatrixXd y{2 * samples, 1};
-  Eigen::MatrixXd W{2 * samples, 2 * samples};
-  W.setZero();
 
   int sample = 0;
   for (auto&& testName :
@@ -229,17 +228,19 @@ FeedforwardGains SolveEigenLinearSystem(
       y(2 * sample, 0) = p_k1 - p_k;
       y(2 * sample + 1, 0) = v_k1;
 
-      // W = diag([1/σₚ², 1/σᵥ², …])
-      W(2 * sample, 2 * sample) = 1.0 / std::pow(positionStddev.value(), 2);
-      W(2 * sample + 1, 2 * sample + 1) =
-          1.0 / std::pow(velocityStddev.value(), 2);
-
       ++sample;
     }
   }
 
-  Eigen::MatrixXd beta =
-      (X.transpose() * W * X).llt().solve(X.transpose() * W * y);
+  // XᵀW where W = diag([1/σₚ², 1/σᵥ², …])
+  Eigen::MatrixXd Xweighted = X.transpose();
+  for (int col = 0; col < Xweighted.cols(); ++col) {
+    Xweighted.col(col) *= 1.0 / std::pow(positionStddev.value(), 2);
+    Xweighted.col(col + 1) *= 1.0 / std::pow(velocityStddev.value(), 2);
+  }
+
+  // Solve (XᵀWX)β = XᵀWy
+  Eigen::MatrixXd beta = (Xweighted * X).llt().solve(Xweighted * y);
 
   double a = beta(0, 0);
   double b = beta(1, 0);
