@@ -386,9 +386,15 @@ FeedforwardGains SolveSleipnirNonlinear(
   return {Ks.Value(), Kv.Value(), Ka.Value()};
 }
 
+/**
+ * Runs the given solver.
+ *
+ * @param name Name to print for results.
+ * @param solver Solver that returns feedforward gains.
+ */
 FeedforwardGains RunSolve(std::string_view name,
                           std::function<FeedforwardGains()> solver) {
-  fmt::print("Sleipnir SysId OLS (velocity only)\n");
+  fmt::print("{}\n", name);
 
   auto startTime = std::chrono::system_clock::now();
   FeedforwardGains gains = solver();
@@ -427,16 +433,16 @@ int main(int argc, const char* argv[]) {
     is >> json;
   }
 
-  RunSolve("Eigen SysId OLS (velocity only)\n",
+  RunSolve("Eigen SysId OLS (velocity only)",
            [&] { return SolveEigenSysIdOLS(json, kMotionThreshold); });
-  RunSolve("Sleipnir SysId OLS (velocity only)\n",
+  RunSolve("Sleipnir SysId OLS (velocity only)",
            [&] { return SolveSleipnirSysIdOLS(json, kMotionThreshold); });
   auto initialGuess =
-      RunSolve("Sleipnir LinearSystem (position and velocity)\n", [&] {
+      RunSolve("Sleipnir LinearSystem (position and velocity)", [&] {
         return SolveSleipnirLinearSystem(json, kMotionThreshold,
                                          kPositionStddev, kVelocityStddev);
       });
-  RunSolve("Sleipnir nonlinear (position and velocity)\n", [&] {
+  RunSolve("Sleipnir nonlinear (position and velocity)", [&] {
     return SolveSleipnirNonlinear(json, kMotionThreshold, kPositionStddev,
                                   kVelocityStddev, initialGuess);
   });
