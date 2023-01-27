@@ -14,7 +14,6 @@
 #include <units/length.h>
 #include <units/time.h>
 #include <units/velocity.h>
-#include <unsupported/Eigen/MatrixFunctions>
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
 

@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include <sleipnir/autodiff/VariableMatrix.hpp>
 #include <units/time.h>
+#include <unsupported/Eigen/MatrixFunctions>
 
 /**
  * Undiscretizes the given continuous A and B matrices.
