@@ -161,11 +161,15 @@ FeedforwardGains SolveEigenLinearSystem(
   //     [c]
   //     [d]
   //
-  // argmin rᵀr
+  // argmin rᵀWr
   //   β
   // where r = y - Xβ
   //
-  // (XᵀWX)β = XᵀWy
+  // d/dβ (y - Xβ)ᵀW(y - Xβ) = 0
+  // -2XᵀW(y - Xβ) = 0
+  // XᵀW(y - Xβ) = 0
+  // XᵀWy - XᵀWXβ = 0
+  // XᵀWXβ = XᵀWy
   //
   // Let N be the number of samples.
   //
