@@ -14,8 +14,8 @@
 #include <units/length.h>
 #include <units/time.h>
 #include <units/velocity.h>
+#include <wpi/MemoryBuffer.h>
 #include <wpi/json.h>
-#include <wpi/raw_istream.h>
 
 #include "MatrixUtils.hpp"
 
@@ -573,13 +573,13 @@ int main(int argc, const char* argv[]) {
   wpi::json json;
   {
     std::error_code ec;
-    wpi::raw_fd_istream is{args[1], ec};
-    if (ec) {
+    auto fileBuffer = wpi::MemoryBuffer::GetFile(args[1], ec);
+    if (fileBuffer == nullptr || ec) {
       fmt::print(stderr, "Failed to open file '{}'\n", args[1]);
       return 1;
     }
 
-    is >> json;
+    json = wpi::json::parse(fileBuffer->GetCharBuffer());
   }
 
   RunSolve("Eigen SysId OLS (velocity only)",
