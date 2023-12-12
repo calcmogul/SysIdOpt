@@ -494,29 +494,21 @@ FeedforwardGains SolveSleipnirNonlinear(
       // dx/dt = Ax + Bu + c
       // xₖ₊₁ = eᴬᵀxₖ + A⁻¹(eᴬᵀ − 1)(Buₖ + c)
       // xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
-      sleipnir::VariableMatrix A{States, States};
-      A(0, 0) = 0;
-      A(0, 1) = 1;
-      A(1, 0) = 0;
-      A(1, 1) = -Kv / Ka;
-      sleipnir::VariableMatrix B{States, Inputs};
-      B(0, 0) = 0;
-      B(1, 0) = 1 / Ka;
-      sleipnir::VariableMatrix c{States, 1};
-      c(0, 0) = 0;
-      c(1, 0) = -Ks / Ka;
+      sleipnir::VariableMatrix A{{0, 1}, {0, -Kv / Ka}};
+      sleipnir::VariableMatrix B{{0}, {1 / Ka}};
+      sleipnir::VariableMatrix c{{0}, {-Ks / Ka}};
 
       // Discretize model without B so it can be reused for c
       sleipnir::VariableMatrix M{States + Inputs, States + Inputs};
       M.Block(0, 0, States, States) = A;
       for (int row = 0; row < std::min(States, Inputs); ++row) {
-        M(row, States + row) = sleipnir::Constant(1.0);
+        M(row, States + row) = 1.0;
       }
-      sleipnir::VariableMatrix phi = expm(M * T);
+      auto phi = expm(M * T);
 
-      sleipnir::VariableMatrix A_d = phi.Block(0, 0, States, States);
-      sleipnir::VariableMatrix B_d = phi.Block(0, States, States, Inputs) * B;
-      sleipnir::VariableMatrix c_d = phi.Block(0, States, States, Inputs) * c;
+      auto A_d = phi.Block(0, 0, States, States);
+      auto B_d = phi.Block(0, States, States, Inputs) * B;
+      auto c_d = phi.Block(0, States, States, Inputs) * c;
       auto f = [&](const auto& x, const auto& u) {
         return A_d * x + B_d * u + c_d * std::copysign(1.0, x(1, 0));
       };
