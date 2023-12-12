@@ -19,6 +19,8 @@
 
 #include "MatrixUtils.hpp"
 
+namespace slp = sleipnir;
+
 /**
  * Converts std::chrono::duration to a number of milliseconds rounded to three
  * decimals.
@@ -299,13 +301,13 @@ FeedforwardGains SolveSleipnirSysIdOLS(
   }
   T /= static_cast<double>(samples);
 
-  sleipnir::OptimizationProblem problem;
+  slp::OptimizationProblem problem;
 
   auto alpha = problem.DecisionVariable();
   auto beta = problem.DecisionVariable();
   auto gamma = problem.DecisionVariable();
 
-  sleipnir::Variable J = 0.0;
+  slp::Variable J = 0.0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
@@ -328,7 +330,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
         return alpha * x + beta * u + gamma * std::copysign(1.0, x);
       };
 
-      J += sleipnir::pow(x_k1 - f(x_k, u_k), 2);
+      J += slp::pow(x_k1 - f(x_k, u_k), 2);
     }
   }
   problem.Minimize(J);
@@ -375,14 +377,14 @@ FeedforwardGains SolveSleipnirLinearSystem(
   }
   T /= static_cast<double>(samples);
 
-  sleipnir::OptimizationProblem problem;
+  slp::OptimizationProblem problem;
 
   auto a = problem.DecisionVariable();
   auto b = problem.DecisionVariable();
   auto c = problem.DecisionVariable();
   auto d = problem.DecisionVariable();
 
-  sleipnir::Variable J = 0.0;
+  slp::Variable J = 0.0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
@@ -409,10 +411,10 @@ FeedforwardGains SolveSleipnirLinearSystem(
       //          A         B       c
       //        [1  a]     [0]     [0]
       // xₖ₊₁ = [0  b]xₖ + [c]uₖ + [d]sgn(xₖ)
-      J += pWeight * sleipnir::pow(p_k1 - (p_k + a * v_k), 2);
-      J += vWeight *
-           sleipnir::pow(
-               v_k1 - (b * v_k + c * u_k + d * std::copysign(1.0, v_k)), 2);
+      J += pWeight * slp::pow(p_k1 - (p_k + a * v_k), 2);
+      J +=
+          vWeight *
+          slp::pow(v_k1 - (b * v_k + c * u_k + d * std::copysign(1.0, v_k)), 2);
     }
   }
   problem.Minimize(J);
@@ -455,7 +457,7 @@ FeedforwardGains SolveSleipnirNonlinear(
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
-  sleipnir::OptimizationProblem problem;
+  slp::OptimizationProblem problem;
 
   auto Ks = problem.DecisionVariable();
   Ks = initialGuess.Ks;
@@ -466,7 +468,7 @@ FeedforwardGains SolveSleipnirNonlinear(
   auto Ka = problem.DecisionVariable();
   Ka = initialGuess.Ka;
 
-  sleipnir::Variable J = 0.0;
+  slp::Variable J = 0.0;
   for (auto&& testName :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
@@ -494,12 +496,12 @@ FeedforwardGains SolveSleipnirNonlinear(
       // dx/dt = Ax + Bu + c
       // xₖ₊₁ = eᴬᵀxₖ + A⁻¹(eᴬᵀ − 1)(Buₖ + c)
       // xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
-      sleipnir::VariableMatrix A{{0, 1}, {0, -Kv / Ka}};
-      sleipnir::VariableMatrix B{{0}, {1 / Ka}};
-      sleipnir::VariableMatrix c{{0}, {-Ks / Ka}};
+      slp::VariableMatrix A{{0, 1}, {0, -Kv / Ka}};
+      slp::VariableMatrix B{{0}, {1 / Ka}};
+      slp::VariableMatrix c{{0}, {-Ks / Ka}};
 
       // Discretize model without B so it can be reused for c
-      sleipnir::VariableMatrix M{States + Inputs, States + Inputs};
+      slp::VariableMatrix M{States + Inputs, States + Inputs};
       M.Block(0, 0, States, States) = A;
       for (int row = 0; row < std::min(States, Inputs); ++row) {
         M(row, States + row) = 1.0;
