@@ -60,6 +60,11 @@ FeedforwardGains SolveEigenSysIdOLS(
       auto& [t_k, u_k, p_k, v_k] = data[k];
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
+
       T += t_k1 - t_k;
       ++samples;
     }
@@ -80,25 +85,25 @@ FeedforwardGains SolveEigenSysIdOLS(
     auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
-      auto& [t_k, u_k, p_k, x_k] = data[k];
-      auto& [t_k1, u_k1, p_k1, x_k1] = data[k + 1];
+      auto& [t_k, u_k, p_k, v_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(x_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motionThreshold.value()) {
         continue;
       }
 
       // Add the velocity term (for alpha)
-      X(sample, 0) = x_k;
+      X(sample, 0) = v_k;
 
       // Add the voltage term (for beta)
       X(sample, 1) = u_k;
 
       // Add the intercept term (for gamma)
-      X(sample, 2) = std::copysign(1.0, x_k);
+      X(sample, 2) = std::copysign(1.0, v_k);
 
       // Add the dependent variable (acceleration)
-      y(sample, 0) = (x_k1 - x_k) / T;
+      y(sample, 0) = (v_k1 - v_k) / T;
 
       ++sample;
     }
@@ -193,6 +198,11 @@ FeedforwardGains SolveEigenLinearSystem(
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto& [t_k, u_k, p_k, v_k] = data[k];
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
 
       T += t_k1 - t_k;
       ++samples;
@@ -295,6 +305,11 @@ FeedforwardGains SolveSleipnirSysIdOLS(
       auto& [t_k, u_k, p_k, v_k] = data[k];
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
+
       T += t_k1 - t_k;
       ++samples;
     }
@@ -318,11 +333,11 @@ FeedforwardGains SolveSleipnirSysIdOLS(
     auto data = json.at(testName).get<std::vector<std::array<double, 4>>>();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
-      auto& [t_k, u_k, p_k, x_k] = data[k];
-      auto& [t_k1, u_k1, p_k1, x_k1] = data[k + 1];
+      auto& [t_k, u_k, p_k, v_k] = data[k];
+      auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(x_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motionThreshold.value()) {
         continue;
       }
 
@@ -330,7 +345,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
         return alpha * x + beta * u + gamma * std::copysign(1.0, x);
       };
 
-      J += slp::pow(x_k1 - f(x_k, u_k), 2);
+      J += slp::pow(v_k1 - f(v_k, u_k), 2);
     }
   }
   problem.Minimize(J);
@@ -370,6 +385,11 @@ FeedforwardGains SolveSleipnirLinearSystem(
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto& [t_k, u_k, p_k, v_k] = data[k];
       auto& [t_k1, u_k1, p_k1, v_k1] = data[k + 1];
+
+      // Ignore data with velocity below motion threshold
+      if (std::abs(v_k) < motionThreshold.value()) {
+        continue;
+      }
 
       T += t_k1 - t_k;
       ++samples;
