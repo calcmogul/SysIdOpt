@@ -28,19 +28,13 @@ set(BUILD_SHARED_LIBS ON CACHE INTERNAL "Build Shared Libs")
 
 include(FetchContent)
 
+set(EIGEN_BUILD_CMAKE_PACKAGE TRUE)
 fetchcontent_declare(
     Eigen3
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG master
 )
 fetchcontent_makeavailable(Eigen3)
-
-fetchcontent_declare(
-    fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG 10.2.1
-)
-fetchcontent_makeavailable(fmt)
 
 fetchcontent_declare(
     Sleipnir
@@ -87,8 +81,5 @@ target_compile_options(
         -Wno-unused-parameter
         -Wno-maybe-uninitialized
 )
-target_compile_features(SysIdOpt PUBLIC cxx_std_20)
-target_link_libraries(
-    SysIdOpt
-    PRIVATE Eigen3::Eigen Sleipnir::Sleipnir fmt wpimath
-)
+target_compile_features(SysIdOpt PUBLIC cxx_std_23)
+target_link_libraries(SysIdOpt PRIVATE Eigen3::Eigen Sleipnir::Sleipnir wpimath)

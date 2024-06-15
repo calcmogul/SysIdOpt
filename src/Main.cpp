@@ -4,12 +4,11 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <print>
 #include <span>
 #include <vector>
 
 #include <Eigen/Core>
-#include <fmt/core.h>
-#include <frc/fmt/Eigen.h>
 #include <sleipnir/optimization/OptimizationProblem.hpp>
 #include <units/length.h>
 #include <units/time.h>
@@ -557,16 +556,16 @@ FeedforwardGains SolveSleipnirNonlinear(
  */
 FeedforwardGains RunSolve(std::string_view name,
                           std::function<FeedforwardGains()> solver) {
-  fmt::print("{}\n", name);
+  std::println("{}", name);
 
   auto startTime = std::chrono::system_clock::now();
   FeedforwardGains gains = solver();
   auto endTime = std::chrono::system_clock::now();
 
-  fmt::print("  duration = {} ms\n", ToMilliseconds(endTime - startTime));
-  fmt::print("  Ks = {}\n", gains.Ks);
-  fmt::print("  Kv = {}\n", gains.Kv);
-  fmt::print("  Ka = {}\n", gains.Ka);
+  std::println("  duration = {} ms", ToMilliseconds(endTime - startTime));
+  std::println("  Ks = {}", gains.Ks);
+  std::println("  Kv = {}", gains.Kv);
+  std::println("  Ka = {}", gains.Ka);
 
   return gains;
 }
@@ -579,7 +578,7 @@ int main(int argc, const char* argv[]) {
   std::span args(argv, argc);
 
   if (args.size() == 1) {
-    fmt::print(stderr, "Specify a JSON filename.\n");
+    std::println(stderr, "Specify a JSON filename.");
     return 1;
   }
 
@@ -589,7 +588,7 @@ int main(int argc, const char* argv[]) {
     std::error_code ec;
     auto fileBuffer = wpi::MemoryBuffer::GetFile(args[1], ec);
     if (fileBuffer == nullptr || ec) {
-      fmt::print(stderr, "Failed to open file '{}'\n", args[1]);
+      std::println(stderr, "Failed to open file '{}'", args[1]);
       return 1;
     }
 
