@@ -584,15 +584,11 @@ int main(int argc, const char* argv[]) {
 
   // Read JSON from the specified path
   wpi::json json;
-  {
-    std::error_code ec;
-    auto fileBuffer = wpi::MemoryBuffer::GetFile(args[1], ec);
-    if (fileBuffer == nullptr || ec) {
-      std::println(stderr, "Failed to open file '{}'", args[1]);
-      return 1;
-    }
-
-    json = wpi::json::parse(fileBuffer->GetCharBuffer());
+  if (auto fileBuffer = wpi::MemoryBuffer::GetFile(args[1])) {
+    json = wpi::json::parse(fileBuffer.value()->GetCharBuffer());
+  } else {
+    std::println(stderr, "Failed to open file '{}'", args[1]);
+    return 1;
   }
 
   RunSolve("Eigen SysId OLS (velocity only)",
