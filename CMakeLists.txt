@@ -36,37 +36,29 @@ fetchcontent_declare(
 )
 fetchcontent_makeavailable(Eigen3)
 
+set(BUILD_TESTING OFF CACHE INTERNAL "Build Testing")
+set(BUILD_BENCHMARKING OFF CACHE INTERNAL "Build Benchmarking")
 fetchcontent_declare(
     Sleipnir
     GIT_REPOSITORY https://github.com/SleipnirGroup/Sleipnir.git
     GIT_TAG main
 )
-fetchcontent_getproperties(Sleipnir)
-if(NOT sleipnir_POPULATED)
-    fetchcontent_populate(Sleipnir)
-    set(BUILD_TESTING OFF CACHE INTERNAL "Build Testing")
-    set(BUILD_BENCHMARKING OFF CACHE INTERNAL "Build Benchmarking")
-    add_subdirectory(${sleipnir_SOURCE_DIR} ${sleipnir_BINARY_DIR})
-endif()
+fetchcontent_makeavailable(Sleipnir)
 
+set(WITH_CSCORE OFF CACHE INTERNAL "With CSCore")
+set(WITH_GUI OFF CACHE INTERNAL "With GUI")
+set(WITH_JAVA OFF CACHE INTERNAL "With Java")
+set(WITH_NTCORE OFF CACHE INTERNAL "With NTCore")
+set(WITH_SIMULATION_MODULES OFF CACHE INTERNAL "With Simulation Modules")
+set(WITH_TESTS OFF CACHE INTERNAL "With Tests")
+set(WITH_WPIMATH ON CACHE INTERNAL "With WPIMath")
+set(WITH_WPILIB OFF CACHE INTERNAL "With WPILib")
 fetchcontent_declare(
     wpilib
     GIT_REPOSITORY https://github.com/wpilibsuite/allwpilib.git
     GIT_TAG main
 )
-fetchcontent_getproperties(wpilib)
-if(NOT wpilib_POPULATED)
-    fetchcontent_populate(wpilib)
-    set(WITH_CSCORE OFF CACHE INTERNAL "With CSCore")
-    set(WITH_GUI OFF CACHE INTERNAL "With GUI")
-    set(WITH_JAVA OFF CACHE INTERNAL "With Java")
-    set(WITH_NTCORE OFF CACHE INTERNAL "With NTCore")
-    set(WITH_SIMULATION_MODULES OFF CACHE INTERNAL "With Simulation Modules")
-    set(WITH_TESTS OFF CACHE INTERNAL "With Tests")
-    set(WITH_WPIMATH ON CACHE INTERNAL "With WPIMath")
-    set(WITH_WPILIB OFF CACHE INTERNAL "With WPILib")
-    add_subdirectory(${wpilib_SOURCE_DIR} ${wpilib_BINARY_DIR})
-endif()
+fetchcontent_makeavailable(wpilib)
 
 file(GLOB_RECURSE SysIdOpt_src src/*.cpp)
 add_executable(SysIdOpt ${SysIdOpt_src})
