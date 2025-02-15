@@ -1,5 +1,6 @@
 // Copyright (c) Tyler Veness
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
