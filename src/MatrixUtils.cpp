@@ -2,17 +2,17 @@
 
 #include "MatrixUtils.hpp"
 
-sleipnir::VariableMatrix expm(const sleipnir::VariableMatrix& mat) {
-  assert(mat.Rows() == mat.Cols());
+slp::VariableMatrix expm(const slp::VariableMatrix& mat) {
+  assert(mat.rows() == mat.cols());
 
-  sleipnir::VariableMatrix result{mat.Rows(), mat.Cols()};
-  for (int row = 0; row < mat.Rows(); ++row) {
-    result(row, row) = 1.0;
+  slp::VariableMatrix result{mat.rows(), mat.cols()};
+  for (int row = 0; row < mat.rows(); ++row) {
+    result[row, row] = 1.0;
   }
 
-  sleipnir::VariableMatrix lastTerm{mat.Rows(), mat.Cols()};
-  for (int row = 0; row < mat.Rows(); ++row) {
-    lastTerm(row, row) = 1.0;
+  slp::VariableMatrix lastTerm{mat.rows(), mat.cols()};
+  for (int row = 0; row < mat.rows(); ++row) {
+    lastTerm[row, row] = 1.0;
   }
   for (int k = 1; k < 5; ++k) {
     lastTerm *= 1.0 / k * mat;

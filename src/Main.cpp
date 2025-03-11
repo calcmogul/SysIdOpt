@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <Eigen/Core>
-#include <sleipnir/optimization/OptimizationProblem.hpp>
+#include <sleipnir/optimization/problem.hpp>
 #include <units/length.h>
 #include <units/time.h>
 #include <units/velocity.h>
@@ -18,8 +18,6 @@
 #include <wpi/json.h>
 
 #include "MatrixUtils.hpp"
-
-namespace slp = sleipnir;
 
 /**
  * Converts std::chrono::duration to a number of milliseconds rounded to three
@@ -316,11 +314,11 @@ FeedforwardGains SolveSleipnirSysIdOLS(
   }
   T /= static_cast<double>(samples);
 
-  slp::OptimizationProblem problem;
+  slp::Problem problem;
 
-  auto alpha = problem.DecisionVariable();
-  auto beta = problem.DecisionVariable();
-  auto gamma = problem.DecisionVariable();
+  auto alpha = problem.decision_variable();
+  auto beta = problem.decision_variable();
+  auto gamma = problem.decision_variable();
 
   slp::Variable J = 0.0;
   for (auto&& testName :
@@ -348,14 +346,14 @@ FeedforwardGains SolveSleipnirSysIdOLS(
       J += slp::pow(v_k1 - f(v_k, u_k), 2);
     }
   }
-  problem.Minimize(J);
+  problem.minimize(J);
 
-  problem.SubjectTo(alpha > 0);
+  problem.subject_to(alpha > 0);
 
-  problem.Solve();
+  problem.solve();
 
-  return {-gamma.Value() / beta.Value(), (1.0 - alpha.Value()) / beta.Value(),
-          (alpha.Value() - 1.0) * T / (beta.Value() * std::log(alpha.Value()))};
+  return {-gamma.value() / beta.value(), (1.0 - alpha.value()) / beta.value(),
+          (alpha.value() - 1.0) * T / (beta.value() * std::log(alpha.value()))};
 }
 
 /**
@@ -397,12 +395,12 @@ FeedforwardGains SolveSleipnirLinearSystem(
   }
   T /= static_cast<double>(samples);
 
-  slp::OptimizationProblem problem;
+  slp::Problem problem;
 
-  auto a = problem.DecisionVariable();
-  auto b = problem.DecisionVariable();
-  auto c = problem.DecisionVariable();
-  auto d = problem.DecisionVariable();
+  auto a = problem.decision_variable();
+  auto b = problem.decision_variable();
+  auto c = problem.decision_variable();
+  auto d = problem.decision_variable();
 
   slp::Variable J = 0.0;
   for (auto&& testName :
@@ -437,14 +435,14 @@ FeedforwardGains SolveSleipnirLinearSystem(
           slp::pow(v_k1 - (b * v_k + c * u_k + d * std::copysign(1.0, v_k)), 2);
     }
   }
-  problem.Minimize(J);
+  problem.minimize(J);
 
-  problem.Solve();
+  problem.solve();
 
-  Eigen::Matrix<double, States, States> discA{{1.0, a.Value()},
-                                              {0.0, b.Value()}};
-  Eigen::Matrix<double, States, Inputs> discB{{0.0}, {c.Value()}};
-  Eigen::Matrix<double, States, Inputs> discC{{0.0}, {d.Value()}};
+  Eigen::Matrix<double, States, States> discA{{1.0, a.value()},
+                                              {0.0, b.value()}};
+  Eigen::Matrix<double, States, Inputs> discB{{0.0}, {c.value()}};
+  Eigen::Matrix<double, States, Inputs> discC{{0.0}, {d.value()}};
   Eigen::Matrix<double, States, States> contA;
   Eigen::Matrix<double, States, Inputs> contB;
   Eigen::Matrix<double, States, Inputs> contC;
@@ -477,15 +475,15 @@ FeedforwardGains SolveSleipnirNonlinear(
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
-  slp::OptimizationProblem problem;
+  slp::Problem problem;
 
-  auto Ks = problem.DecisionVariable();
+  auto Ks = problem.decision_variable();
   Ks = initialGuess.Ks;
 
-  auto Kv = problem.DecisionVariable();
+  auto Kv = problem.decision_variable();
   Kv = initialGuess.Kv;
 
-  auto Ka = problem.DecisionVariable();
+  auto Ka = problem.decision_variable();
   Ka = initialGuess.Ka;
 
   slp::Variable J = 0.0;
@@ -522,15 +520,15 @@ FeedforwardGains SolveSleipnirNonlinear(
 
       // Discretize model without B so it can be reused for c
       slp::VariableMatrix M{States + Inputs, States + Inputs};
-      M.Block(0, 0, States, States) = A;
+      M.block(0, 0, States, States) = A;
       for (int row = 0; row < std::min(States, Inputs); ++row) {
-        M(row, States + row) = 1.0;
+        M[row, States + row] = 1.0;
       }
       auto phi = expm(M * T);
 
-      auto A_d = phi.Block(0, 0, States, States);
-      auto B_d = phi.Block(0, States, States, Inputs) * B;
-      auto c_d = phi.Block(0, States, States, Inputs) * c;
+      auto A_d = phi.block(0, 0, States, States);
+      auto B_d = phi.block(0, States, States, Inputs) * B;
+      auto c_d = phi.block(0, States, States, Inputs) * c;
       auto f = [&](const auto& x, const auto& u) {
         return A_d * x + B_d * u + c_d * std::copysign(1.0, x(1, 0));
       };
@@ -542,11 +540,11 @@ FeedforwardGains SolveSleipnirNonlinear(
       J += (x_next - f(x, u)).T() * sigmaInv * (x_next - f(x, u));
     }
   }
-  problem.Minimize(J);
+  problem.minimize(J);
 
-  problem.Solve();
+  problem.solve();
 
-  return {Ks.Value(), Kv.Value(), Ka.Value()};
+  return {Ks.value(), Kv.value(), Ka.value()};
 }
 
 /**
