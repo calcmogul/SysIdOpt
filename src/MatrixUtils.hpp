@@ -3,7 +3,7 @@
 #pragma once
 
 #include <Eigen/Core>
-#include <sleipnir/autodiff/VariableMatrix.hpp>
+#include <sleipnir/autodiff/variable_matrix.hpp>
 #include <units/time.h>
 #include <unsupported/Eigen/MatrixFunctions>
 
@@ -45,4 +45,4 @@ void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
  *
  * @param mat The matrix to exponentiate.
  */
-sleipnir::VariableMatrix expm(const sleipnir::VariableMatrix& mat);
+slp::VariableMatrix expm(const slp::VariableMatrix& mat);
