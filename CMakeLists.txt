@@ -37,7 +37,6 @@ fetchcontent_declare(
 fetchcontent_makeavailable(Eigen3)
 
 set(BUILD_TESTING OFF CACHE INTERNAL "Build Testing")
-set(BUILD_BENCHMARKING OFF CACHE INTERNAL "Build Benchmarking")
 fetchcontent_declare(
     Sleipnir
     GIT_REPOSITORY https://github.com/SleipnirGroup/Sleipnir.git
