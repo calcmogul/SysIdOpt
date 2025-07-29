@@ -29,20 +29,20 @@ set(BUILD_SHARED_LIBS ON CACHE INTERNAL "Build Shared Libs")
 include(FetchContent)
 
 set(EIGEN_BUILD_CMAKE_PACKAGE TRUE)
-fetchcontent_declare(
+FetchContent_Declare(
     Eigen3
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG master
 )
-fetchcontent_makeavailable(Eigen3)
+FetchContent_MakeAvailable(Eigen3)
 
 set(BUILD_TESTING OFF CACHE INTERNAL "Build Testing")
-fetchcontent_declare(
+FetchContent_Declare(
     Sleipnir
     GIT_REPOSITORY https://github.com/SleipnirGroup/Sleipnir.git
     GIT_TAG main
 )
-fetchcontent_makeavailable(Sleipnir)
+FetchContent_MakeAvailable(Sleipnir)
 
 set(WITH_CSCORE OFF CACHE INTERNAL "With CSCore")
 set(WITH_GUI OFF CACHE INTERNAL "With GUI")
@@ -52,12 +52,12 @@ set(WITH_SIMULATION_MODULES OFF CACHE INTERNAL "With Simulation Modules")
 set(WITH_TESTS OFF CACHE INTERNAL "With Tests")
 set(WITH_WPIMATH ON CACHE INTERNAL "With WPIMath")
 set(WITH_WPILIB OFF CACHE INTERNAL "With WPILib")
-fetchcontent_declare(
+FetchContent_Declare(
     wpilib
     GIT_REPOSITORY https://github.com/wpilibsuite/allwpilib.git
     GIT_TAG main
 )
-fetchcontent_makeavailable(wpilib)
+FetchContent_MakeAvailable(wpilib)
 
 file(GLOB_RECURSE SysIdOpt_src src/*.cpp)
 add_executable(SysIdOpt ${SysIdOpt_src})
