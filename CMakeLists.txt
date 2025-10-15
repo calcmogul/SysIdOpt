@@ -1,30 +1,15 @@
-# Disable in-source builds to prevent source tree corruption
-if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-    message(
-        FATAL_ERROR
-        "
-FATAL: In-source builds are not allowed.
-       You should create a separate directory for build files.
-"
-    )
-endif()
-
 cmake_minimum_required(VERSION 3.21)
 
-# Set default build type to release with debug info (i.e. release mode
-# optimizations are performed, but debug info still exists).
+# Set default build type to release with debug info
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
 endif()
 
 project(SysIdOpt)
 
-# Generate compile_commands.json by default
-if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
-    set(CMAKE_EXPORT_COMPILE_COMMANDS "YES" CACHE STRING "" FORCE)
-endif()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(BUILD_SHARED_LIBS ON CACHE INTERNAL "Build Shared Libs")
+set(BUILD_SHARED_LIBS ON CACHE INTERNAL "Build using shared libraries")
 
 include(FetchContent)
 
@@ -36,7 +21,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Eigen3)
 
-set(BUILD_TESTING OFF CACHE INTERNAL "Build Testing")
+set(BUILD_TESTING OFF CACHE INTERNAL "Build testing")
 FetchContent_Declare(
     Sleipnir
     GIT_REPOSITORY https://github.com/SleipnirGroup/Sleipnir.git
@@ -56,21 +41,15 @@ FetchContent_Declare(
     wpilib
     GIT_REPOSITORY https://github.com/wpilibsuite/allwpilib.git
     GIT_TAG main
+    SYSTEM
 )
 FetchContent_MakeAvailable(wpilib)
 
 file(GLOB_RECURSE SysIdOpt_src src/*.cpp)
 add_executable(SysIdOpt ${SysIdOpt_src})
 
-target_compile_options(
-    SysIdOpt
-    PRIVATE
-        -Wall
-        -pedantic
-        -Wextra
-        -Werror
-        -Wno-unused-parameter
-        -Wno-maybe-uninitialized
-)
+target_compile_options(SysIdOpt PRIVATE -Wall -Wextra -pedantic)
+set_property(TARGET SysIdOpt PROPERTY COMPILE_WARNING_AS_ERROR ON)
+
 target_compile_features(SysIdOpt PUBLIC cxx_std_23)
 target_link_libraries(SysIdOpt PRIVATE Eigen3::Eigen Sleipnir::Sleipnir wpimath)
