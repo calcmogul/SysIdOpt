@@ -45,4 +45,4 @@ void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
  *
  * @param mat The matrix to exponentiate.
  */
-slp::VariableMatrix expm(const slp::VariableMatrix& mat);
+slp::VariableMatrix<double> expm(const slp::VariableMatrix<double>& mat);

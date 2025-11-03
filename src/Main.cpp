@@ -314,7 +314,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
   }
   T /= static_cast<double>(samples);
 
-  slp::Problem problem;
+  slp::Problem<double> problem;
 
   auto alpha = problem.decision_variable();
   auto beta = problem.decision_variable();
@@ -395,7 +395,7 @@ FeedforwardGains SolveSleipnirLinearSystem(
   }
   T /= static_cast<double>(samples);
 
-  slp::Problem problem;
+  slp::Problem<double> problem;
 
   auto a = problem.decision_variable();
   auto b = problem.decision_variable();
@@ -475,7 +475,7 @@ FeedforwardGains SolveSleipnirNonlinear(
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
-  slp::Problem problem;
+  slp::Problem<double> problem;
 
   auto Ks = problem.decision_variable();
   Ks = initialGuess.Ks;
@@ -514,12 +514,12 @@ FeedforwardGains SolveSleipnirNonlinear(
       // dx/dt = Ax + Bu + c
       // xₖ₊₁ = eᴬᵀxₖ + A⁻¹(eᴬᵀ − 1)(Buₖ + c)
       // xₖ₊₁ = A_d xₖ + A⁻¹(A_d − 1)(Buₖ + c)
-      slp::VariableMatrix A{{0, 1}, {0, -Kv / Ka}};
-      slp::VariableMatrix B{{0}, {1 / Ka}};
-      slp::VariableMatrix c{{0}, {-Ks / Ka}};
+      slp::VariableMatrix<double> A{{0, 1}, {0, -Kv / Ka}};
+      slp::VariableMatrix<double> B{{0}, {1 / Ka}};
+      slp::VariableMatrix<double> c{{0}, {-Ks / Ka}};
 
       // Discretize model without B so it can be reused for c
-      slp::VariableMatrix M{States + Inputs, States + Inputs};
+      slp::VariableMatrix<double> M{States + Inputs, States + Inputs};
       M.block(0, 0, States, States) = A;
       for (int row = 0; row < std::min(States, Inputs); ++row) {
         M[row, States + row] = 1.0;
