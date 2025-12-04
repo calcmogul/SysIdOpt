@@ -19,10 +19,8 @@
 
 #include "MatrixUtils.hpp"
 
-/**
- * Converts std::chrono::duration to a number of milliseconds rounded to three
- * decimals.
- */
+/// Converts std::chrono::duration to a number of milliseconds rounded to three
+/// decimals.
 template <typename Rep, typename Period = std::ratio<1>>
 double ToMilliseconds(const std::chrono::duration<Rep, Period>& duration) {
   using std::chrono::duration_cast;
@@ -36,15 +34,13 @@ struct FeedforwardGains {
   double Ka = 0.0;
 };
 
-/**
- * Solves SysId's OLS problem with Eigen to produce initial guess for nonlinear
- * problem.
- *
- * @param[in] json SysId JSON.
- * @param[in] motionThreshold Data with velocities closer to zero than this are
- *   ignored.
- * @return Initial guess for nonlinear problem.
- */
+/// Solves SysId's OLS problem with Eigen to produce initial guess for nonlinear
+/// problem.
+///
+/// @param[in] json SysId JSON.
+/// @param[in] motionThreshold Data with velocities closer to zero than this are
+///     ignored.
+/// @return Initial guess for nonlinear problem.
 FeedforwardGains SolveEigenSysIdOLS(
     const wpi::json& json, units::meters_per_second_t motionThreshold) {
   // Find average timestep
@@ -117,17 +113,15 @@ FeedforwardGains SolveEigenSysIdOLS(
   return {-gamma / beta, -alpha / beta, 1.0 / beta};
 }
 
-/**
- * Solves linear system ID problem with Eigen to produce initial guess for
- * nonlinear problem.
- *
- * @param[in] json SysId JSON.
- * @param[in] motionThreshold Data with velocities closer to zero than this are
- *   ignored.
- * @param[in] positionStddev Position standard deviation.
- * @param[in] velocityStddev Velocity standard deviation.
- * @return Initial guess for nonlinear problem.
- */
+/// Solves linear system ID problem with Eigen to produce initial guess for
+/// nonlinear problem.
+///
+/// @param[in] json SysId JSON.
+/// @param[in] motionThreshold Data with velocities closer to zero than this are
+///     ignored.
+/// @param[in] positionStddev Position standard deviation.
+/// @param[in] velocityStddev Velocity standard deviation.
+/// @return Initial guess for nonlinear problem.
 FeedforwardGains SolveEigenLinearSystem(
     const wpi::json& json, units::meters_per_second_t motionThreshold,
     units::meter_t positionStddev, units::meters_per_second_t velocityStddev) {
@@ -279,15 +273,13 @@ FeedforwardGains SolveEigenLinearSystem(
           1.0 / contB(1, 0)};
 }
 
-/**
- * Solves SysId's OLS problem with Sleipnir to produce initial guess for
- * nonlinear problem.
- *
- * @param[in] json SysId JSON.
- * @param[in] motionThreshold Data with velocities closer to zero than this are
- *   ignored.
- * @return Initial guess for nonlinear problem.
- */
+/// Solves SysId's OLS problem with Sleipnir to produce initial guess for
+/// nonlinear problem.
+///
+/// @param[in] json SysId JSON.
+/// @param[in] motionThreshold Data with velocities closer to zero than this are
+///     ignored.
+/// @return Initial guess for nonlinear problem.
 FeedforwardGains SolveSleipnirSysIdOLS(
     const wpi::json& json, units::meters_per_second_t motionThreshold) {
   // Implements https://file.tavsys.net/control/sysid-ols.pdf
@@ -356,17 +348,15 @@ FeedforwardGains SolveSleipnirSysIdOLS(
           (alpha.value() - 1.0) * T / (beta.value() * std::log(alpha.value()))};
 }
 
-/**
- * Solves linear system ID problem with Sleipnir to produce initial guess for
- * nonlinear problem.
- *
- * @param[in] json SysId JSON.
- * @param[in] motionThreshold Data with velocities closer to zero than this are
- *   ignored.
- * @param[in] positionStddev Position standard deviation.
- * @param[in] velocityStddev Velocity standard deviation.
- * @return Initial guess for nonlinear problem.
- */
+/// Solves linear system ID problem with Sleipnir to produce initial guess for
+/// nonlinear problem.
+///
+/// @param[in] json SysId JSON.
+/// @param[in] motionThreshold Data with velocities closer to zero than this are
+///     ignored.
+/// @param[in] positionStddev Position standard deviation.
+/// @param[in] velocityStddev Velocity standard deviation.
+/// @return Initial guess for nonlinear problem.
 FeedforwardGains SolveSleipnirLinearSystem(
     const wpi::json& json, units::meters_per_second_t motionThreshold,
     units::meter_t positionStddev, units::meters_per_second_t velocityStddev) {
@@ -458,16 +448,14 @@ FeedforwardGains SolveSleipnirLinearSystem(
           1.0 / contB(1, 0)};
 }
 
-/**
- * Solves nonlinear system ID problem with Sleipnir.
- *
- * @param[in] json SysId JSON.
- * @param[in] motionThreshold Data with velocities closer to zero than this are
- *   ignored.
- * @param[in] positionStddev Position standard deviation.
- * @param[in] velocityStddev Velocity standard deviation.
- * @param[in] initialGuess Initial guess from linear problem.
- */
+/// Solves nonlinear system ID problem with Sleipnir.
+///
+/// @param[in] json SysId JSON.
+/// @param[in] motionThreshold Data with velocities closer to zero than this are
+///     ignored.
+/// @param[in] positionStddev Position standard deviation.
+/// @param[in] velocityStddev Velocity standard deviation.
+/// @param[in] initialGuess Initial guess from linear problem.
 FeedforwardGains SolveSleipnirNonlinear(
     const wpi::json& json, units::meters_per_second_t motionThreshold,
     units::meter_t positionStddev, units::meters_per_second_t velocityStddev,
@@ -547,12 +535,10 @@ FeedforwardGains SolveSleipnirNonlinear(
   return {Ks.value(), Kv.value(), Ka.value()};
 }
 
-/**
- * Runs the given solver.
- *
- * @param name Name to print for results.
- * @param solver Solver that returns feedforward gains.
- */
+/// Runs the given solver.
+///
+/// @param name Name to print for results.
+/// @param solver Solver that returns feedforward gains.
 FeedforwardGains RunSolve(std::string_view name,
                           std::function<FeedforwardGains()> solver) {
   std::println("{}", name);

@@ -7,17 +7,15 @@
 #include <units/time.h>
 #include <unsupported/Eigen/MatrixFunctions>
 
-/**
- * Undiscretizes the given continuous A and B matrices.
- *
- * @tparam States Number of states.
- * @tparam Inputs Number of inputs.
- * @param discA Discrete system matrix.
- * @param discB Discrete input matrix.
- * @param dt    Discretization timestep.
- * @param contA Storage for continuous system matrix.
- * @param contB Storage for continuous input matrix.
- */
+/// Undiscretizes the given continuous A and B matrices.
+///
+/// @tparam States Number of states.
+/// @tparam Inputs Number of inputs.
+/// @param discA Discrete system matrix.
+/// @param discB Discrete input matrix.
+/// @param dt    Discretization timestep.
+/// @param contA Storage for continuous system matrix.
+/// @param contB Storage for continuous input matrix.
 template <int States, int Inputs>
 void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
                     const Eigen::Matrix<double, States, Inputs>& discB,
@@ -40,9 +38,7 @@ void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
   *contB = M.template block<States, Inputs>(0, States);
 }
 
-/**
- * Performs the matrix exponential of a matrix.
- *
- * @param mat The matrix to exponentiate.
- */
+/// Performs the matrix exponential of a matrix.
+///
+/// @param mat The matrix to exponentiate.
 slp::VariableMatrix<double> expm(const slp::VariableMatrix<double>& mat);
