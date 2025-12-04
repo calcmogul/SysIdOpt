@@ -3,7 +3,8 @@
 import json
 import sys
 
-import casadi as ca
+from sleipnir.autodiff import exp
+from sleipnir.optimization import Problem
 
 
 def sign(x):
@@ -38,11 +39,9 @@ def main():
             us += [sample[1] for sample in json_data[test_name]]
             xs += [sample[3] for sample in json_data[test_name]]
 
-    solver = ca.Opti()
+    problem = Problem()
 
-    Ks = solver.variable()
-    Kv = solver.variable()
-    Ka = solver.variable()
+    Ks, Kv, Ka = problem.decision_variable(3)
 
     J = 0
     for k in range(len(ts) - 1):
@@ -54,22 +53,21 @@ def main():
         A = -Kv / Ka
         B = 1 / Ka
         c = -Ks / Ka * sign(xs[k])
-        A_d = ca.exp(A * T)
+        A_d = exp(A * T)
         f = lambda x, u: A_d * x + 1 / A * (A_d - 1) * (B * u + c)
 
         J += (xs[k + 1] - f(xs[k], us[k])) ** 2
-    solver.minimize(J)
+    problem.minimize(J)
 
-    solver.set_initial(Ks, 1)
-    solver.set_initial(Kv, 1)
-    solver.set_initial(Ka, 1)
+    Ks.set_value(1)
+    Kv.set_value(1)
+    Ka.set_value(1)
 
-    solver.solver("ipopt")
-    sol = solver.solve()
+    problem.solve(diagnostics=True)
 
-    print(f"Ks = {sol.value(Ks)}")
-    print(f"Kv = {sol.value(Kv)}")
-    print(f"Ka = {sol.value(Ka)}")
+    print(f"Ks = {Ks.value()}")
+    print(f"Kv = {Kv.value()}")
+    print(f"Ka = {Ka.value()}")
 
 
 if __name__ == "__main__":
