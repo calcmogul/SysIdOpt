@@ -342,7 +342,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
 
   problem.subject_to(alpha > 0);
 
-  problem.solve();
+  problem.solve({.tolerance = 1e-6});
 
   return {-gamma.value() / beta.value(), (1.0 - alpha.value()) / beta.value(),
           (alpha.value() - 1.0) * T / (beta.value() * std::log(alpha.value()))};
@@ -427,7 +427,7 @@ FeedforwardGains SolveSleipnirLinearSystem(
   }
   problem.minimize(J);
 
-  problem.solve();
+  problem.solve({.tolerance = 1e-6});
 
   Eigen::Matrix<double, States, States> discA{{1.0, a.value()},
                                               {0.0, b.value()}};
@@ -530,7 +530,7 @@ FeedforwardGains SolveSleipnirNonlinear(
   }
   problem.minimize(J);
 
-  problem.solve();
+  problem.solve({.tolerance = 1e-6});
 
   return {Ks.value(), Kv.value(), Ka.value()};
 }
