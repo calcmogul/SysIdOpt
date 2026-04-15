@@ -17,7 +17,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Eigen3)
 
-set(BUILD_TESTING OFF CACHE INTERNAL "Build testing")
 FetchContent_Declare(
     Sleipnir
     GIT_REPOSITORY https://github.com/SleipnirGroup/Sleipnir.git
