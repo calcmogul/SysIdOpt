@@ -14,6 +14,7 @@ FetchContent_Declare(
     Eigen3
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG master
+    SYSTEM
 )
 FetchContent_MakeAvailable(Eigen3)
 
@@ -21,6 +22,7 @@ FetchContent_Declare(
     Sleipnir
     GIT_REPOSITORY https://github.com/SleipnirGroup/Sleipnir.git
     GIT_TAG main
+    SYSTEM
 )
 FetchContent_MakeAvailable(Sleipnir)
 
@@ -32,6 +34,7 @@ set(WITH_SIMULATION_MODULES OFF CACHE INTERNAL "With Simulation Modules")
 set(WITH_TESTS OFF CACHE INTERNAL "With Tests")
 set(WITH_WPIMATH ON CACHE INTERNAL "With WPIMath")
 set(WITH_WPILIB OFF CACHE INTERNAL "With WPILib")
+set(NO_WERROR ON "Disable -Werror flag during compilation")
 FetchContent_Declare(
     wpilib
     GIT_REPOSITORY https://github.com/wpilibsuite/allwpilib.git

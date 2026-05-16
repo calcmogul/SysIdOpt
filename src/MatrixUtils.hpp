@@ -4,8 +4,8 @@
 
 #include <Eigen/Core>
 #include <sleipnir/autodiff/variable_matrix.hpp>
-#include <units/time.h>
 #include <unsupported/Eigen/MatrixFunctions>
+#include <wpi/units/time.hpp>
 
 /// Undiscretizes the given continuous A and B matrices.
 ///
@@ -19,7 +19,7 @@
 template <int States, int Inputs>
 void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
                     const Eigen::Matrix<double, States, Inputs>& discB,
-                    units::second_t dt,
+                    wpi::units::second_t dt,
                     Eigen::Matrix<double, States, States>* contA,
                     Eigen::Matrix<double, States, Inputs>* contB) {
   // ϕ = [A_d  B_d]
