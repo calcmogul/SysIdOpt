@@ -280,7 +280,7 @@ FeedforwardGains SolveEigenLinearSystem(
 
   // XᵀW where W = diag([1/σₚ², 1/σᵥ², …])
   Eigen::MatrixXd Xweighted = X.transpose();
-  for (int col = 0; col < Xweighted.cols(); ++col) {
+  for (int col = 0; col < Xweighted.cols(); col += 2) {
     Xweighted.col(col) *= 1.0 / std::pow(positionStddev.value(), 2);
     Xweighted.col(col + 1) *= 1.0 / std::pow(velocityStddev.value(), 2);
   }
