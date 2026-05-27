@@ -1,6 +1,6 @@
 // Copyright (c) Tyler Veness
 
-#include "MatrixUtils.hpp"
+#include "matrix_utils.hpp"
 
 slp::VariableMatrix<double> expm(const slp::VariableMatrix<double>& mat) {
   assert(mat.rows() == mat.cols());

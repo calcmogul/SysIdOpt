@@ -16,7 +16,7 @@
 #include <wpi/util/MemoryBuffer.hpp>
 #include <wpi/util/json.hpp>
 
-#include "MatrixUtils.hpp"
+#include "matrix_utils.hpp"
 
 /// Converts std::chrono::duration to a number of milliseconds rounded to three
 /// decimals.
