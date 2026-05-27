@@ -11,22 +11,22 @@
 ///
 /// @tparam States Number of states.
 /// @tparam Inputs Number of inputs.
-/// @param discA Discrete system matrix.
-/// @param discB Discrete input matrix.
-/// @param dt    Discretization timestep.
-/// @param contA Storage for continuous system matrix.
-/// @param contB Storage for continuous input matrix.
+/// @param disc_A Discrete system matrix.
+/// @param disc_B Discrete input matrix.
+/// @param dt Discretization timestep.
+/// @param cont_A Storage for continuous system matrix.
+/// @param cont_B Storage for continuous input matrix.
 template <int States, int Inputs>
-void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
-                    const Eigen::Matrix<double, States, Inputs>& discB,
-                    wpi::units::second_t dt,
-                    Eigen::Matrix<double, States, States>* contA,
-                    Eigen::Matrix<double, States, Inputs>* contB) {
+void undiscretize_ab(const Eigen::Matrix<double, States, States>& disc_A,
+                     const Eigen::Matrix<double, States, Inputs>& disc_B,
+                     wpi::units::second_t dt,
+                     Eigen::Matrix<double, States, States>* cont_A,
+                     Eigen::Matrix<double, States, Inputs>* cont_B) {
   // ϕ = [A_d  B_d]
   //     [ 0    I ]
   Eigen::Matrix<double, States + Inputs, States + Inputs> phi;
-  phi.template block<States, States>(0, 0) = discA;
-  phi.template block<States, Inputs>(0, States) = discB;
+  phi.template block<States, States>(0, 0) = disc_A;
+  phi.template block<States, Inputs>(0, States) = disc_B;
   phi.template block<Inputs, States>(States, 0).setZero();
   phi.template block<Inputs, Inputs>(States, States).setIdentity();
 
@@ -34,8 +34,8 @@ void UndiscretizeAB(const Eigen::Matrix<double, States, States>& discA,
   //                [0  0]
   decltype(phi) M = phi.log() / dt.value();
 
-  *contA = M.template block<States, States>(0, 0);
-  *contB = M.template block<States, Inputs>(0, States);
+  *cont_A = M.template block<States, States>(0, 0);
+  *cont_B = M.template block<States, Inputs>(0, States);
 }
 
 /// Performs the matrix exponential of a matrix.

@@ -21,7 +21,7 @@
 /// Converts std::chrono::duration to a number of milliseconds rounded to three
 /// decimals.
 template <typename Rep, typename Period = std::ratio<1>>
-double ToMilliseconds(const std::chrono::duration<Rep, Period>& duration) {
+double to_ms(const std::chrono::duration<Rep, Period>& duration) {
   using std::chrono::duration_cast;
   using std::chrono::microseconds;
   return duration_cast<microseconds>(duration).count() / 1000.0;
@@ -37,18 +37,18 @@ struct FeedforwardGains {
 /// problem.
 ///
 /// @param[in] json SysId JSON.
-/// @param[in] motionThreshold Data with velocities closer to zero than this are
-///     ignored.
+/// @param[in] motion_threshold Data with velocities closer to zero than this
+///     are ignored.
 /// @return Initial guess for nonlinear problem.
-FeedforwardGains SolveEigenSysIdOLS(
+FeedforwardGains solve_eigen_sysid_ols(
     const wpi::util::json& json,
-    wpi::units::meters_per_second_t motionThreshold) {
+    wpi::units::meters_per_second_t motion_threshold) {
   // Find average timestep
   double T = 0.0;
   int samples = 0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -64,7 +64,7 @@ FeedforwardGains SolveEigenSysIdOLS(
       // double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -78,14 +78,14 @@ FeedforwardGains SolveEigenSysIdOLS(
   Eigen::MatrixXd y{samples, 1};
 
   int sample = 0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
     // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
     //
     // Non-Drivetrain Mechanisms:
     //   timestamp, voltage, position, velocity
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -101,7 +101,7 @@ FeedforwardGains SolveEigenSysIdOLS(
       double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -135,16 +135,17 @@ FeedforwardGains SolveEigenSysIdOLS(
 /// nonlinear problem.
 ///
 /// @param[in] json SysId JSON.
-/// @param[in] motionThreshold Data with velocities closer to zero than this are
+/// @param[in] motion_threshold Data with velocities closer to zero than this
+/// are
 ///     ignored.
-/// @param[in] positionStddev Position standard deviation.
-/// @param[in] velocityStddev Velocity standard deviation.
+/// @param[in] position_stddev Position standard deviation.
+/// @param[in] velocity_stddev Velocity standard deviation.
 /// @return Initial guess for nonlinear problem.
-FeedforwardGains SolveEigenLinearSystem(
+FeedforwardGains solve_eigen_linear_system(
     const wpi::util::json& json,
-    wpi::units::meters_per_second_t motionThreshold,
-    wpi::units::meter_t positionStddev,
-    wpi::units::meters_per_second_t velocityStddev) {
+    wpi::units::meters_per_second_t motion_threshold,
+    wpi::units::meter_t position_stddev,
+    wpi::units::meters_per_second_t velocity_stddev) {
   // [p]    = [1  a][p]  + [0]   + [0]
   // [v]ₖ₊₁   [0  b][v]ₖ   [c]uₖ   [d]sgn(vₖ)
   //
@@ -203,9 +204,9 @@ FeedforwardGains SolveEigenLinearSystem(
   // Find average timestep
   double T = 0.0;
   int samples = 0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -221,7 +222,7 @@ FeedforwardGains SolveEigenLinearSystem(
       // double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -235,14 +236,14 @@ FeedforwardGains SolveEigenLinearSystem(
   Eigen::MatrixXd y{2 * samples, 1};
 
   int sample = 0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
     // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
     //
     // Non-Drivetrain Mechanisms:
     //   timestamp, voltage, position, velocity
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -258,7 +259,7 @@ FeedforwardGains SolveEigenLinearSystem(
       double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -279,56 +280,57 @@ FeedforwardGains SolveEigenLinearSystem(
   }
 
   // XᵀW where W = diag([1/σₚ², 1/σᵥ², …])
-  Eigen::MatrixXd Xweighted = X.transpose();
-  for (int col = 0; col < Xweighted.cols(); col += 2) {
-    Xweighted.col(col) *= 1.0 / std::pow(positionStddev.value(), 2);
-    Xweighted.col(col + 1) *= 1.0 / std::pow(velocityStddev.value(), 2);
+  Eigen::MatrixXd X_weighted = X.transpose();
+  for (int col = 0; col < X_weighted.cols(); col += 2) {
+    X_weighted.col(col) *= 1.0 / std::pow(position_stddev.value(), 2);
+    X_weighted.col(col + 1) *= 1.0 / std::pow(velocity_stddev.value(), 2);
   }
 
   // Solve (XᵀWX)β = XᵀWy
-  Eigen::MatrixXd beta = (Xweighted * X).llt().solve(Xweighted * y);
+  Eigen::MatrixXd beta = (X_weighted * X).llt().solve(X_weighted * y);
 
   double a = beta(0, 0);
   double b = beta(1, 0);
   double c = beta(2, 0);
   double d = beta(3, 0);
 
-  Eigen::Matrix<double, States, States> discA{{1.0, a}, {0.0, b}};
-  Eigen::Matrix<double, States, Inputs> discB{{0.0}, {c}};
-  Eigen::Matrix<double, States, Inputs> discC{{0.0}, {d}};
-  Eigen::Matrix<double, States, States> contA;
-  Eigen::Matrix<double, States, Inputs> contB;
-  Eigen::Matrix<double, States, Inputs> contC;
-  UndiscretizeAB(discA, discB, wpi::units::second_t{T}, &contA, &contB);
-  UndiscretizeAB(discA, discC, wpi::units::second_t{T}, &contA, &contC);
+  Eigen::Matrix<double, States, States> disc_A{{1.0, a}, {0.0, b}};
+  Eigen::Matrix<double, States, Inputs> disc_B{{0.0}, {c}};
+  Eigen::Matrix<double, States, Inputs> disc_C{{0.0}, {d}};
+  Eigen::Matrix<double, States, States> cont_A;
+  Eigen::Matrix<double, States, Inputs> cont_B;
+  Eigen::Matrix<double, States, Inputs> cont_C;
+  undiscretize_ab(disc_A, disc_B, wpi::units::second_t{T}, &cont_A, &cont_B);
+  undiscretize_ab(disc_A, disc_C, wpi::units::second_t{T}, &cont_A, &cont_C);
 
   //              A           B          c
   //         [0     1  ]    [ 0  ]    [  0   ]
   // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]sgn(x)
 
   // Ks, Kv, Ka
-  return {-contC(1, 0) / contB(1, 0), -contA(1, 1) / contB(1, 0),
-          1.0 / contB(1, 0)};
+  return {-cont_C(1, 0) / cont_B(1, 0), -cont_A(1, 1) / cont_B(1, 0),
+          1.0 / cont_B(1, 0)};
 }
 
 /// Solves SysId's OLS problem with Sleipnir to produce initial guess for
 /// nonlinear problem.
 ///
 /// @param[in] json SysId JSON.
-/// @param[in] motionThreshold Data with velocities closer to zero than this are
+/// @param[in] motion_threshold Data with velocities closer to zero than this
+/// are
 ///     ignored.
 /// @return Initial guess for nonlinear problem.
-FeedforwardGains SolveSleipnirSysIdOLS(
+FeedforwardGains solve_sleipnir_sysid_ols(
     const wpi::util::json& json,
-    wpi::units::meters_per_second_t motionThreshold) {
+    wpi::units::meters_per_second_t motion_threshold) {
   // Implements https://file.tavsys.net/control/sysid-ols.pdf
 
   // Find average timestep
   double T = 0.0;
   int samples = 0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -344,7 +346,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
       // double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -361,14 +363,14 @@ FeedforwardGains SolveSleipnirSysIdOLS(
   auto gamma = problem.decision_variable();
 
   slp::Variable J = 0.0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
     // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
     //
     // Non-Drivetrain Mechanisms:
     //   timestamp, voltage, position, velocity
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -384,7 +386,7 @@ FeedforwardGains SolveSleipnirSysIdOLS(
       double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -409,25 +411,26 @@ FeedforwardGains SolveSleipnirSysIdOLS(
 /// nonlinear problem.
 ///
 /// @param[in] json SysId JSON.
-/// @param[in] motionThreshold Data with velocities closer to zero than this are
+/// @param[in] motion_threshold Data with velocities closer to zero than this
+/// are
 ///     ignored.
-/// @param[in] positionStddev Position standard deviation.
-/// @param[in] velocityStddev Velocity standard deviation.
+/// @param[in] position_stddev Position standard deviation.
+/// @param[in] velocity_stddev Velocity standard deviation.
 /// @return Initial guess for nonlinear problem.
-FeedforwardGains SolveSleipnirLinearSystem(
+FeedforwardGains solve_sleipnir_linear_system(
     const wpi::util::json& json,
-    wpi::units::meters_per_second_t motionThreshold,
-    wpi::units::meter_t positionStddev,
-    wpi::units::meters_per_second_t velocityStddev) {
+    wpi::units::meters_per_second_t motion_threshold,
+    wpi::units::meter_t position_stddev,
+    wpi::units::meters_per_second_t velocity_stddev) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
   // Find average timestep
   double T = 0.0;
   int samples = 0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -443,7 +446,7 @@ FeedforwardGains SolveSleipnirLinearSystem(
       // double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -461,14 +464,14 @@ FeedforwardGains SolveSleipnirLinearSystem(
   auto d = problem.decision_variable();
 
   slp::Variable J = 0.0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
     // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
     //
     // Non-Drivetrain Mechanisms:
     //   timestamp, voltage, position, velocity
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -484,14 +487,14 @@ FeedforwardGains SolveSleipnirLinearSystem(
       double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
       // See equation (2.11) of
       // https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
-      double pWeight = 1.0 / std::pow(positionStddev.value(), 2);
-      double vWeight = 1.0 / std::pow(velocityStddev.value(), 2);
+      double pWeight = 1.0 / std::pow(position_stddev.value(), 2);
+      double vWeight = 1.0 / std::pow(velocity_stddev.value(), 2);
 
       //          A         B       c
       //        [1  a]     [0]     [0]
@@ -506,62 +509,63 @@ FeedforwardGains SolveSleipnirLinearSystem(
 
   problem.solve({.tolerance = 1e-5});
 
-  Eigen::Matrix<double, States, States> discA{{1.0, a.value()},
-                                              {0.0, b.value()}};
-  Eigen::Matrix<double, States, Inputs> discB{{0.0}, {c.value()}};
-  Eigen::Matrix<double, States, Inputs> discC{{0.0}, {d.value()}};
-  Eigen::Matrix<double, States, States> contA;
-  Eigen::Matrix<double, States, Inputs> contB;
-  Eigen::Matrix<double, States, Inputs> contC;
-  UndiscretizeAB(discA, discB, wpi::units::second_t{T}, &contA, &contB);
-  UndiscretizeAB(discA, discC, wpi::units::second_t{T}, &contA, &contC);
+  Eigen::Matrix<double, States, States> disc_A{{1.0, a.value()},
+                                               {0.0, b.value()}};
+  Eigen::Matrix<double, States, Inputs> disc_B{{0.0}, {c.value()}};
+  Eigen::Matrix<double, States, Inputs> disc_C{{0.0}, {d.value()}};
+  Eigen::Matrix<double, States, States> cont_A;
+  Eigen::Matrix<double, States, Inputs> cont_B;
+  Eigen::Matrix<double, States, Inputs> cont_C;
+  undiscretize_ab(disc_A, disc_B, wpi::units::second_t{T}, &cont_A, &cont_B);
+  undiscretize_ab(disc_A, disc_C, wpi::units::second_t{T}, &cont_A, &cont_C);
 
   //              A           B          c
   //         [0     1  ]    [ 0  ]    [  0   ]
   // dx/dt = [0  -Kv/Ka]x + [1/Ka]u + [-Ks/Ka]sgn(x)
 
   // Ks, Kv, Ka
-  return {-contC(1, 0) / contB(1, 0), -contA(1, 1) / contB(1, 0),
-          1.0 / contB(1, 0)};
+  return {-cont_C(1, 0) / cont_B(1, 0), -cont_A(1, 1) / cont_B(1, 0),
+          1.0 / cont_B(1, 0)};
 }
 
 /// Solves nonlinear system ID problem with Sleipnir.
 ///
 /// @param[in] json SysId JSON.
-/// @param[in] motionThreshold Data with velocities closer to zero than this are
+/// @param[in] motion_threshold Data with velocities closer to zero than this
+/// are
 ///     ignored.
-/// @param[in] positionStddev Position standard deviation.
-/// @param[in] velocityStddev Velocity standard deviation.
-/// @param[in] initialGuess Initial guess from linear problem.
-FeedforwardGains SolveSleipnirNonlinear(
+/// @param[in] position_stddev Position standard deviation.
+/// @param[in] velocity_stddev Velocity standard deviation.
+/// @param[in] initial_guess Initial guess from linear problem.
+FeedforwardGains solve_sleipnir_nonlinear(
     const wpi::util::json& json,
-    wpi::units::meters_per_second_t motionThreshold,
-    wpi::units::meter_t positionStddev,
-    wpi::units::meters_per_second_t velocityStddev,
-    const FeedforwardGains& initialGuess) {
+    wpi::units::meters_per_second_t motion_threshold,
+    wpi::units::meter_t position_stddev,
+    wpi::units::meters_per_second_t velocity_stddev,
+    const FeedforwardGains& initial_guess) {
   constexpr int States = 2;
   constexpr int Inputs = 1;
 
   slp::Problem<double> problem;
 
   auto Ks = problem.decision_variable();
-  Ks = initialGuess.Ks;
+  Ks = initial_guess.Ks;
 
   auto Kv = problem.decision_variable();
-  Kv = initialGuess.Kv;
+  Kv = initial_guess.Kv;
 
   auto Ka = problem.decision_variable();
-  Ka = initialGuess.Ka;
+  Ka = initial_guess.Ka;
 
   slp::Variable J = 0.0;
-  for (auto&& testName :
+  for (auto&& test_name :
        {"fast-backward", "fast-forward", "slow-backward", "slow-forward"}) {
     // See
     // https://github.com/wpilibsuite/sysid/blob/main/docs/data-collection.md
     //
     // Non-Drivetrain Mechanisms:
     //   timestamp, voltage, position, velocity
-    auto data = json.at(testName).get_array();
+    auto data = json.at(test_name).get_array();
 
     for (size_t k = 0; k < data.size() - 1; ++k) {
       auto sample_k = data[k].get_array();
@@ -577,7 +581,7 @@ FeedforwardGains SolveSleipnirNonlinear(
       double v_k1 = sample_k1[3].get_double();
 
       // Ignore data with velocity below motion threshold
-      if (std::abs(v_k) < motionThreshold.value()) {
+      if (std::abs(v_k) < motion_threshold.value()) {
         continue;
       }
 
@@ -609,11 +613,11 @@ FeedforwardGains SolveSleipnirNonlinear(
         return A_d * x + B_d * u + c_d * std::copysign(1.0, x(1, 0));
       };
 
-      Eigen::Matrix<double, 2, 2> sigmaInv{
-          {1.0 / std::pow(positionStddev.value(), 2), 0.0},
-          {0.0, 1.0 / std::pow(velocityStddev.value(), 2)}};
+      Eigen::Matrix<double, 2, 2> sigma_inv{
+          {1.0 / std::pow(position_stddev.value(), 2), 0.0},
+          {0.0, 1.0 / std::pow(velocity_stddev.value(), 2)}};
 
-      J += (x_next - f(x, u)).T() * sigmaInv * (x_next - f(x, u));
+      J += (x_next - f(x, u)).T() * sigma_inv * (x_next - f(x, u));
     }
   }
   problem.minimize(J);
@@ -627,15 +631,15 @@ FeedforwardGains SolveSleipnirNonlinear(
 ///
 /// @param name Name to print for results.
 /// @param solver Solver that returns feedforward gains.
-FeedforwardGains RunSolve(std::string_view name,
-                          std::function<FeedforwardGains()> solver) {
+FeedforwardGains run_solve(std::string_view name,
+                           std::function<FeedforwardGains()> solver) {
   std::println("{}", name);
 
-  auto startTime = std::chrono::system_clock::now();
+  auto start_time = std::chrono::system_clock::now();
   FeedforwardGains gains = solver();
-  auto endTime = std::chrono::system_clock::now();
+  auto end_time = std::chrono::system_clock::now();
 
-  std::println("  duration = {} ms", ToMilliseconds(endTime - startTime));
+  std::println("  duration = {} ms", to_ms(end_time - start_time));
   std::println("  Ks = {}", gains.Ks);
   std::println("  Kv = {}", gains.Kv);
   std::println("  Ka = {}", gains.Ka);
@@ -644,9 +648,9 @@ FeedforwardGains RunSolve(std::string_view name,
 }
 
 int main(int argc, const char* argv[]) {
-  constexpr wpi::units::meters_per_second_t kMotionThreshold = 0.1_mps;
-  constexpr wpi::units::meter_t kPositionStddev = 1_cm;
-  constexpr wpi::units::meters_per_second_t kVelocityStddev = 0.2_mps;
+  constexpr wpi::units::meters_per_second_t MOTION_THRESHOLD = 0.1_mps;
+  constexpr wpi::units::meter_t POSITION_STDDEV = 1_cm;
+  constexpr wpi::units::meters_per_second_t VELOCITY_STDDEV = 0.2_mps;
 
   std::span args(argv, argc);
 
@@ -665,21 +669,21 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
 
-  RunSolve("Eigen SysId OLS (velocity only)",
-           [&] { return SolveEigenSysIdOLS(json, kMotionThreshold); });
-  RunSolve("Eigen LinearSystem (position and velocity)", [&] {
-    return SolveEigenLinearSystem(json, kMotionThreshold, kPositionStddev,
-                                  kVelocityStddev);
+  run_solve("Eigen SysId OLS (velocity only)",
+            [&] { return solve_eigen_sysid_ols(json, MOTION_THRESHOLD); });
+  run_solve("Eigen LinearSystem (position and velocity)", [&] {
+    return solve_eigen_linear_system(json, MOTION_THRESHOLD, POSITION_STDDEV,
+                                     VELOCITY_STDDEV);
   });
-  RunSolve("Sleipnir SysId OLS (velocity only)",
-           [&] { return SolveSleipnirSysIdOLS(json, kMotionThreshold); });
-  auto initialGuess =
-      RunSolve("Sleipnir LinearSystem (position and velocity)", [&] {
-        return SolveSleipnirLinearSystem(json, kMotionThreshold,
-                                         kPositionStddev, kVelocityStddev);
+  run_solve("Sleipnir SysId OLS (velocity only)",
+            [&] { return solve_sleipnir_sysid_ols(json, MOTION_THRESHOLD); });
+  auto initial_guess =
+      run_solve("Sleipnir LinearSystem (position and velocity)", [&] {
+        return solve_sleipnir_linear_system(json, MOTION_THRESHOLD,
+                                            POSITION_STDDEV, VELOCITY_STDDEV);
       });
-  RunSolve("Sleipnir nonlinear (position and velocity)", [&] {
-    return SolveSleipnirNonlinear(json, kMotionThreshold, kPositionStddev,
-                                  kVelocityStddev, initialGuess);
+  run_solve("Sleipnir nonlinear (position and velocity)", [&] {
+    return solve_sleipnir_nonlinear(json, MOTION_THRESHOLD, POSITION_STDDEV,
+                                    VELOCITY_STDDEV, initial_guess);
   });
 }
