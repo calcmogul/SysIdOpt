@@ -30,7 +30,7 @@ void undiscretize_ab(const Eigen::Matrix<double, States, States>& disc_A,
   phi.template block<Inputs, States>(States, 0).setZero();
   phi.template block<Inputs, Inputs>(States, States).setIdentity();
 
-  // M = log(ϕ/T) = [A  B]  // NOLINT
+  // M = log(ϕ/T) = [A  B]
   //                [0  0]
   decltype(phi) M = phi.log() / dt.value();
 
