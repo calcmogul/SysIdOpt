@@ -146,6 +146,9 @@ FeedforwardGains solve_eigen_linear_system(
     wpi::units::meters_per_second_t motion_threshold,
     wpi::units::meter_t position_stddev,
     wpi::units::meters_per_second_t velocity_stddev) {
+  // FIXME: This discrete model is wrong. Discretize the continuous model to get
+  // the correct one.
+  //
   // [p]    = [1  a][p]  + [0]   + [0]
   // [v]ₖ₊₁   [0  b][v]ₖ   [c]uₖ   [d]sgn(vₖ)
   //
@@ -496,6 +499,9 @@ FeedforwardGains solve_sleipnir_linear_system(
       double pWeight = 1.0 / std::pow(position_stddev.value(), 2);
       double vWeight = 1.0 / std::pow(velocity_stddev.value(), 2);
 
+      // FIXME: This discrete model is wrong. Discretize the continuous model to
+      // get the correct one.
+      //
       //          A         B       c
       //        [1  a]     [0]     [0]
       // xₖ₊₁ = [0  b]xₖ + [c]uₖ + [d]sgn(xₖ)
