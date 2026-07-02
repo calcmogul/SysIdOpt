@@ -26,15 +26,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Sleipnir)
 
-set(WITH_CSCORE OFF CACHE INTERNAL "With CSCore")
-set(WITH_GUI OFF CACHE INTERNAL "With GUI")
-set(WITH_JAVA OFF CACHE INTERNAL "With Java")
-set(WITH_NTCORE OFF CACHE INTERNAL "With NTCore")
-set(WITH_SIMULATION_MODULES OFF CACHE INTERNAL "With Simulation Modules")
-set(WITH_TESTS OFF CACHE INTERNAL "With Tests")
-set(WITH_WPIMATH ON CACHE INTERNAL "With WPIMath")
-set(WITH_WPILIB OFF CACHE INTERNAL "With WPILib")
-set(NO_WERROR ON "Disable -Werror flag during compilation")
+set(WPILIB_WITH_CSCORE OFF CACHE INTERNAL "With CSCore")
+set(WPILIB_WITH_GUI OFF CACHE INTERNAL "With GUI")
+set(WPILIB_WITH_NTCORE OFF CACHE INTERNAL "With NTCore")
+set(WPILIB_WITH_SIMULATION_MODULES OFF CACHE INTERNAL "With Simulation Modules")
+set(WPILIB_WITH_TESTS OFF CACHE INTERNAL "With Tests")
+set(WPILIB_WITH_WPIMATH ON CACHE INTERNAL "With WPIMath")
+set(WPILIB_WITH_WPILIB OFF CACHE INTERNAL "With WPILib")
+set(WPILIB_NO_WERROR ON "Disable -Werror flag during compilation")
 FetchContent_Declare(
     wpilib
     GIT_REPOSITORY https://github.com/wpilibsuite/allwpilib.git
